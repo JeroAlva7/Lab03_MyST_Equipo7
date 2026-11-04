@@ -10,17 +10,22 @@ pasar las pruebas con `pytest` y contener el reporte en `docs/reporte.pdf`.
 
 | # | Tarea | Responsable | Estado |
 |---|---|---|---|
-| 1 | Crear repositorio, entorno virtual, estructura y charter | Jerónimo | En curso |
-| 2 | Definir universo y descargar datos (10-15 años) | Jerónimo | Pendiente |
-| 3 | Correlación, Engle-Granger y Johansen sobre entrenamiento | Jerónimo | Pendiente |
+| 1 | Repositorio, entorno, estructura, charter y plan de trabajo | Jerónimo | Hecho |
+| 2 | Universo de activos y datos (10-15 años), validación y partición | Jerónimo | Pendiente |
+| 3 | Orden de integración, correlación, Engle-Granger y Johansen | Jerónimo | Pendiente |
 | 4 | Filtro de Kalman 1 (pesos dinámicos) | Jerónimo | Pendiente |
-| 5 | Filtro de Kalman 2 (media y varianza del spread) | Jerónimo | Pendiente |
-| 6 | VECM, z-score, señales y sizing | Integrante 2 | Pendiente |
-| 7 | Backtest con costos y walk-forward | Integrante 2 | Pendiente |
-| 8 | Métricas y artifacts | Integrante 2 | Pendiente |
-| 9 | Pruebas obligatorias (4) | Ambos | Pendiente |
-| 10 | Dashboard (vista ejecutiva y técnica) | Integrante 2 | Pendiente |
-| 11 | Reporte ejecutivo y presentación | Ambos | Pendiente |
+| 5 | Filtro de Kalman 2 (media y varianza del spread) y Johansen móvil | Jerónimo | Pendiente |
+| 6 | Pruebas de causalidad, normalización e innovaciones | Jerónimo | Pendiente |
+| 7 | VECM, reglas de señal y sizing | Raúl | Pendiente |
+| 8 | Backtest multi-pata con costos y bitácora | Raúl | Pendiente |
+| 9 | Prueba de contabilidad multi-pata | Raúl | Pendiente |
+| 10 | Grid search, walk-forward y rebalanceo diario contra banda | Raúl | Pendiente |
+| 11 | Métricas, integración en main.py y artifacts | Raúl | Pendiente |
+| 12 | Dashboard (vista ejecutiva y técnica) | Raúl | Pendiente |
+| 13 | Figuras obligatorias (1, 3-6 Jerónimo; 2, 7, 8 Raúl) | Ambos | Pendiente |
+| 14 | Reporte ejecutivo, presentación y post-mortem | Ambos | Pendiente |
+
+El detalle de commits por integrante está en `plan_de_trabajo.md`.
 
 ## Bloqueos y desviaciones
 
