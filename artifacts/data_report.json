@@ -1,0 +1,31 @@
+{
+  "rows_raw": 3771,
+  "rows_clean": 3771,
+  "duplicates_removed": 0,
+  "missing_by_asset": {
+    "XOM": 0,
+    "CVX": 0,
+    "COP": 0,
+    "EOG": 0
+  },
+  "rows_dropped": 0,
+  "start": "2011-11-01",
+  "end": "2026-10-30",
+  "splits": {
+    "train": {
+      "start": "2011-11-01",
+      "end": "2020-10-27",
+      "rows": 2262
+    },
+    "test": {
+      "start": "2020-10-28",
+      "end": "2023-10-26",
+      "rows": 754
+    },
+    "val": {
+      "start": "2023-10-27",
+      "end": "2026-10-30",
+      "rows": 755
+    }
+  }
+}
