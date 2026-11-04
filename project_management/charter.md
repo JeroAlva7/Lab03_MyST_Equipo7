@@ -3,7 +3,7 @@
 ## Declaración de alcance
 
 **La estrategia hará:**
-- Seleccionar un grupo de 4 activos con justificación económica y cointegración verificada (Johansen) solo con datos de entrenamiento.
+- Seleccionar un grupo de 4 activos de un mismo sector con justificación económica y cointegración verificada (Johansen) solo con datos de entrenamiento, documentando todos los universos y grupos evaluados.
 - Estimar pesos dinámicos con el filtro de Kalman 1 y un z-score causal con el filtro de Kalman 2.
 - Generar señales con un VECM y umbrales calibrados por grid search sobre entrenamiento.
 - Evaluar con backtest diario que incluye comisiones (0.125% por pata) y préstamo en cortos (0.25% anual).
@@ -34,7 +34,7 @@
 | R2 | Divergencia o mala calibración del filtro de Kalman | Media | Alto | Burn-in, diagnóstico de innovaciones normalizadas (prueba 4), Q y R justificados |
 | R3 | Problemas de calidad de datos (huecos, splits, cambios de API) | Media | Medio | Precios ajustados, validación automática, datos guardados en CSV dentro del repo |
 | R4 | Sesgo de look-ahead | Media | Alto | Z-score con estadísticos prior, Johansen solo en entrenamiento, prueba de causalidad |
-| R5 | Pruebas múltiples: relación espuria | Media | Alto | Universo acotado (11 grupos) con racional económico; se reporta el número de grupos probados |
+| R5 | Pruebas múltiples: relación espuria | Media | Alto | 6 universos de un solo sector con racional económico (66 grupos en total); se reportan todos, se aplica Bonferroni y se verifica la estacionariedad del spread fuera de muestra |
 | R6 | Plazo de una semana y dependencia entre integrantes | Media | Medio | Hitos diarios, módulos con interfaces claras, commits frecuentes de ambos |
 
 ## Asignación de roles
