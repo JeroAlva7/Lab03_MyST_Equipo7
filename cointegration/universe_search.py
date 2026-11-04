@@ -15,8 +15,15 @@ from data.validation import clean_prices, split_data, validate_prices
 
 
 def evaluate_universe(name: str, tickers: list[str]) -> pd.DataFrame:
-    """Descarga (o lee del CSV) un universo y lo pasa por el embudo con datos de entrenamiento."""
-    cache = config.DATA_DIR / "universes" / f"{name}.csv"
+    """Descarga (o lee del CSV) un universo y lo pasa por el embudo con datos de entrenamiento.
+
+    El universo elegido reutiliza config.PRICES_FILE, el mismo archivo que usa
+    main.py, para que ambas tablas se calculen exactamente con los mismos precios.
+    """
+    if tickers == config.TICKERS:
+        cache = config.PRICES_FILE
+    else:
+        cache = config.DATA_DIR / "universes" / f"{name}.csv"
     raw = load_prices(tickers, config.START_DATE, config.END_DATE, cache)
     prices, _ = clean_prices(raw, config.MAX_FFILL_DAYS)
     validate_prices(prices)
