@@ -42,5 +42,5 @@
 | Integrante | Responsabilidades | Contribuciones esperadas en Git |
 |---|---|---|
 | Jerónimo Rojas (@JeroAlva7) | Datos, cointegración, filtros de Kalman, pruebas | `data/`, `cointegration/`, `kalman/`, `tests/` |
-| _[Integrante 2]_ | VECM y señales, backtest, métricas, dashboard | `strategy/`, `backtest/`, `performance/`, `dashboard/` |
+| Raul Zanatta (@rzanatta0) | VECM y señales, backtest, métricas, dashboard | `strategy/`, `backtest/`, `performance/`, `dashboard/` |
 | Ambos | Reporte, presentación, revisión cruzada | `docs/`, `project_management/`, `README.md` |
