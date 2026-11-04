@@ -15,10 +15,15 @@ ARTIFACTS_DIR = ROOT / "artifacts"
 DOCS_DIR = ROOT / "docs"
 
 # --- Datos ------------------------------------------------------------------
-TICKERS: list[str] = []          # Se definen en el paso de selección de activos
-START_DATE = "2011-01-01"        # Ventana de ~15 años
-END_DATE = "2025-12-31"
+# Universo: las 4 mayores posiciones del ETF XLE (sector energía del S&P 500).
+# Integradas (XOM, CVX) y exploración y producción (COP, EOG), expuestas al mismo
+# factor común: el precio del crudo.
+TICKERS = ["XOM", "CVX", "COP", "EOG"]
+START_DATE = "2011-11-01"        # 15 años de datos diarios
+END_DATE = "2026-11-01"          # Fecha exclusiva: el último día es el 30-oct-2026
+PRICES_FILE = DATA_DIR / "prices.csv"   # Copia local versionada; evita depender de Yahoo
 SPLIT = (0.60, 0.20, 0.20)       # Entrenamiento / prueba / validación (cronológico)
+MAX_FFILL_DAYS = 3               # Huecos aislados de hasta 3 días se rellenan hacia adelante
 
 # --- Costos y capital -------------------------------------------------------
 COMMISSION = 0.00125             # 0.125% por pata, a la entrada y a la salida
