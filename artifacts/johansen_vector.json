@@ -1,0 +1,22 @@
+{
+  "group": "DUK-SO-AEP-XEL",
+  "assets": [
+    "DUK",
+    "SO",
+    "AEP",
+    "XEL"
+  ],
+  "beta": {
+    "DUK": 1.0,
+    "SO": 0.181161,
+    "AEP": -0.614241,
+    "XEL": -0.099139
+  },
+  "spread_adf_p": 0.00020793062481115607,
+  "half_life": 23.973468485229088,
+  "eigenvalue_1": 0.014525724658455138,
+  "rank_trace": 1,
+  "k_ar_diff": 1,
+  "best_pair": "DUK-AEP",
+  "groups_tested": 11
+}
