@@ -16,6 +16,7 @@ import pandas as pd
 import config
 from cointegration.correlation import rolling_pair_correlation
 from cointegration.integration import all_integrated_of_order_one, integration_order_table
+from cointegration.johansen import johansen_table, johansen_test
 from cointegration.selection import pick_final, run_selection_funnel
 from data.loader import load_prices
 from data.validation import clean_prices, split_data, validate_prices
@@ -75,6 +76,14 @@ def run_cointegration_stage(splits: dict) -> dict:
     }
     with open(out / "johansen_vector.json", "w", encoding="utf-8") as f:
         json.dump(vector, f, indent=2)
+
+    # Tabla completa de traza y máximo eigenvalor del grupo final y del mejor par (paso 4)
+    details = []
+    for label, group in (("grupo_final", final), ("mejor_par", best_pair)):
+        if group is not None:
+            joh = johansen_test(log_train[group.split("-")], vector["k_ar_diff"])
+            details.append(johansen_table(joh).assign(grupo=group, rol=label))
+    pd.concat(details).to_csv(out / "johansen_detail.csv", index=False, float_format="%.6f")
 
     with pd.option_context("display.width", 160, "display.max_columns", 12):
         print(table[["corr_mean", "eg_pvalue", "rank_trace", "spread_adf_p",

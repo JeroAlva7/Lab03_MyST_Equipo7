@@ -50,7 +50,27 @@ def johansen_test(log_prices: pd.DataFrame, k_ar_diff: int) -> dict:
         "rank_trace": first_non_rejection(trace, trace_cv),
         "rank_max_eig": first_non_rejection(max_eig, max_eig_cv),
         "k_ar_diff": k_ar_diff,
+        "trace_cv_all": result.cvt, "max_eig_cv_all": result.cvm,
     }
+
+
+def johansen_table(johansen: dict) -> pd.DataFrame:
+    """Tabla completa de Johansen: una fila por hipótesis H0: rango <= r0.
+
+    Incluye eigenvalor, estadísticos de traza y de máximo eigenvalor con sus valores
+    críticos al 90%, 95% y 99%, y si cada estadístico rechaza H0 al 95%.
+    """
+    rows = []
+    for r0, eigenvalue in enumerate(johansen["eigenvalues"]):
+        trace_cv, max_cv = johansen["trace_cv_all"][r0], johansen["max_eig_cv_all"][r0]
+        rows.append({"H0": f"rango <= {r0}", "eigenvalue": float(eigenvalue),
+                     "trace": float(johansen["trace"][r0]), "trace_cv90": float(trace_cv[0]),
+                     "trace_cv95": float(trace_cv[1]), "trace_cv99": float(trace_cv[2]),
+                     "trace_rejects_95": bool(johansen["trace"][r0] > trace_cv[1]),
+                     "max_eig": float(johansen["max_eig"][r0]), "max_eig_cv90": float(max_cv[0]),
+                     "max_eig_cv95": float(max_cv[1]), "max_eig_cv99": float(max_cv[2]),
+                     "max_eig_rejects_95": bool(johansen["max_eig"][r0] > max_cv[1])})
+    return pd.DataFrame(rows)
 
 
 def first_non_rejection(statistics: np.ndarray, critical_values: np.ndarray) -> int:
