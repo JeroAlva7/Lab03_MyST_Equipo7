@@ -35,6 +35,16 @@ COINTEGRATION = {
     "half_life_range": (5, 60),  # Vida media operable en días (S14)
 }
 
+# --- Filtros de Kalman (secciones 3.3 y 3.4) ------------------------------
+KALMAN = {
+    "q_weights": 1e-8,           # Q del filtro 1: los pesos cambian despacio (ver README)
+    "p0_weights": 1e-6,          # P_0 del filtro 1: alta confianza en el vector de Johansen
+    "burn_in": 60,               # Días descartados antes de operar (~3 vidas medias)
+    "q_mean_grid": [1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5],  # Q del filtro 2: por máxima verosimilitud
+    "p0_mean": 1e-4,             # P_0 del filtro 2
+    "ewma_lambda": 0.97,         # Persistencia del EWMA de la varianza del spread
+}
+
 # --- Búsqueda del universo (documentada para el control de pruebas múltiples) ---
 # Cada universo es un solo sector con un factor económico común. Todos se evalúan
 # con el mismo embudo y solo con la partición de entrenamiento; el reporte incluye
