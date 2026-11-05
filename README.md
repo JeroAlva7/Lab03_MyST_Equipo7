@@ -7,7 +7,7 @@ Microestructuras y Sistemas de Trading · ITESO · Módulo 3
 | Integrante | Usuario de GitHub | Responsabilidades principales |
 |---|---|---|
 | Jerónimo Rojas | [@JeroAlva7](https://github.com/JeroAlva7) | Datos, selección por cointegración, filtros de Kalman, pruebas |
-| Raúl Zanatta | [@rzanatta0] | VECM y señales, backtest, métricas, dashboard |
+| Raúl Zanatta | [@rzanatta0](https://github.com/rzanatta0) | VECM y señales, backtest, métricas, dashboard |
 
 Ambos integrantes participan en el reporte, la presentación y la revisión cruzada del código.
 
