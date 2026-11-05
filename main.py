@@ -19,9 +19,9 @@ from cointegration.integration import all_integrated_of_order_one, integration_o
 from cointegration.selection import pick_final, run_selection_funnel
 from data.loader import load_prices
 from data.validation import clean_prices, split_data, validate_prices
+from cointegration.stability import rolling_johansen, stationarity_by_split
 from kalman.diagnostics import innovation_diagnostics
-from kalman.spread_filter import fit_ar1, log_likelihood, run_spread_filter
-from kalman.weights_filter import run_weights_filter
+from kalman.pipeline import order_assets, run_filters
 
 
 def run_data_stage() -> tuple[pd.DataFrame, dict]:
@@ -83,51 +83,55 @@ def run_cointegration_stage(splits: dict) -> dict:
     return vector
 
 
-def run_kalman_stage(prices: pd.DataFrame, splits: dict, vector: dict) -> None:
+def split_labels(splits: dict) -> np.ndarray:
+    """Etiqueta de partición ("train", "test", "val") para cada fecha."""
+    return np.concatenate([[name] * len(df) for name, df in splits.items()])
+
+
+def run_kalman_stage(prices: pd.DataFrame, splits: dict, vector: dict) -> pd.DataFrame:
     """Etapa 3: filtro 1 (pesos dinámicos) y filtro 2 (media, varianza y z-score)."""
     print("[3/6] Filtros de Kalman")
     k = config.KALMAN
-    # La pata normalizada (beta = +1) va primero: es la observación del filtro 1
-    assets = sorted(vector["assets"], key=lambda a: abs(vector["beta"][a] - 1.0) > 1e-9)
-    log_prices = np.log(prices[assets])
-    beta0 = np.array([vector["beta"][a] for a in assets])
-    n_train = len(splits["train"])
+    assets, beta0 = order_assets(vector)
+    f1, f2, params = run_filters(np.log(prices[assets]), beta0, len(splits["train"]), k)
 
-    # R del filtro 1: varianza del spread de Johansen en entrenamiento ("price noise")
-    johansen_spread = log_prices.iloc[:n_train] @ beta0
-    r_weights = float(johansen_spread.var())
-    f1 = run_weights_filter(log_prices, beta0, float(johansen_spread.mean()),
-                            k["q_weights"], r_weights, k["p0_weights"])
-
-    # Filtro 2: AR(1) del spread y Q por máxima verosimilitud, solo en entrenamiento
-    train_spread = f1["spread"].iloc[k["burn_in"]:n_train]
-    ar = fit_ar1(train_spread)
-    likelihoods = {q: log_likelihood(train_spread, ar["phi"], ar["mu"], q, ar["resid_var"], k["p0_mean"])
-                   for q in k["q_mean_grid"]}
-    q_mean = max(likelihoods, key=likelihoods.get)
-    f2 = run_spread_filter(f1["spread"], ar["phi"], ar["mu"], q_mean, ar["resid_var"],
-                           k["p0_mean"], k["ewma_lambda"])
-
-    labels = np.array(["train"] * n_train + ["test"] * len(splits["test"]) + ["val"] * len(splits["val"]))
-    f2.insert(0, "split", labels)
+    f2.insert(0, "split", split_labels(splits))
     f2.insert(1, "tradable", np.arange(len(f2)) >= k["burn_in"])
     diagnostics = {name: innovation_diagnostics(f2.loc[(f2["split"] == name) & f2["tradable"], "innovation_norm"])
                    for name in ("train", "test", "val")}
+    params = {"assets_order": assets, **params, "burn_in_days": k["burn_in"],
+              "burn_in_end": str(f2.index[k["burn_in"]].date()), "innovation_diagnostics": diagnostics}
 
-    params = {"assets_order": assets, "filter1": {"q": k["q_weights"], "r": r_weights, "p0": k["p0_weights"]},
-              "burn_in_days": k["burn_in"], "burn_in_end": str(f2.index[k["burn_in"]].date()),
-              "filter2": {**ar, "q": q_mean, "p0": k["p0_mean"], "ewma_lambda": k["ewma_lambda"],
-                          "log_likelihood_grid": {str(q): v for q, v in likelihoods.items()}},
-              "innovation_diagnostics": diagnostics}
     f1.to_csv(config.ARTIFACTS_DIR / "filter1.csv", float_format="%.10g")
     f2.to_csv(config.ARTIFACTS_DIR / "filter2.csv", float_format="%.10g")
     with open(config.ARTIFACTS_DIR / "kalman_params.json", "w", encoding="utf-8") as f:
         json.dump(params, f, indent=2)
 
-    print(f"  Filtro 1: Q = {k['q_weights']:.0e} I, R = {r_weights:.2e}, burn-in hasta {params['burn_in_end']}")
-    print(f"  Filtro 2: phi = {ar['phi']:.4f} (vida media {ar['half_life']:.1f} días), Q = {q_mean:.0e} por MV")
+    ar = params["filter2"]
+    print(f"  Filtro 1: Q = {k['q_weights']:.0e} I, R = {params['filter1']['r']:.2e}, burn-in hasta {params['burn_in_end']}")
+    print(f"  Filtro 2: phi = {ar['phi']:.4f} (vida media {ar['half_life']:.1f} días), Q = {ar['q']:.0e} por MV")
     for name, d in diagnostics.items():
         print(f"  Innovaciones {name:>5}: varianza {d['variance']:.2f}, acf1 {d['acf1']:+.3f}, Ljung-Box p {d['ljung_box_p']:.3f}")
+    return f1
+
+
+def run_stability_stage(prices: pd.DataFrame, splits: dict, vector: dict, f1: pd.DataFrame) -> None:
+    """Johansen móvil y estacionariedad del spread estático y dinámico por partición."""
+    print("  Estabilidad de la relación")
+    assets, beta0 = order_assets(vector)
+    log_prices = np.log(prices[assets])
+    rolling = rolling_johansen(log_prices, config.ROLLING["window"], config.ROLLING["step"], vector["k_ar_diff"])
+    rolling.to_csv(config.ARTIFACTS_DIR / "johansen_rolling.csv", float_format="%.6f")
+
+    labels = pd.Series(split_labels(splits), index=prices.index)
+    spreads = {"estatico": log_prices @ beta0, "kalman": f1["spread"].iloc[config.KALMAN["burn_in"]:]}
+    table = stationarity_by_split(spreads, labels)
+    table.to_csv(config.ARTIFACTS_DIR / "stability_oos.csv", index=False, float_format="%.6f")
+
+    print(f"  Johansen móvil ({config.ROLLING['window']} días): cointegra en "
+          f"{rolling['cointegrated'].mean():.0%} de {len(rolling)} ventanas")
+    with pd.option_context("display.width", 120):
+        print(table.round(4).to_string(index=False))
 
 
 def main() -> None:
@@ -137,7 +141,8 @@ def main() -> None:
     print(f"Lab03 MyST — Equipo 7 | semilla = {config.SEED}")
     prices, splits = run_data_stage()
     vector = run_cointegration_stage(splits)
-    run_kalman_stage(prices, splits, vector)
+    f1 = run_kalman_stage(prices, splits, vector)
+    run_stability_stage(prices, splits, vector, f1)
 
 
 if __name__ == "__main__":

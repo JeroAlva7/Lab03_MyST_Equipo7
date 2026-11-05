@@ -45,6 +45,9 @@ KALMAN = {
     "ewma_lambda": 0.97,         # Persistencia del EWMA de la varianza del spread
 }
 
+# --- Johansen móvil (figura 4 y estabilidad) ------------------------------
+ROLLING = {"window": 756, "step": 21}   # Ventanas de 3 años que avanzan 1 mes
+
 # --- Búsqueda del universo (documentada para el control de pruebas múltiples) ---
 # Cada universo es un solo sector con un factor económico común. Todos se evalúan
 # con el mismo embudo y solo con la partición de entrenamiento; el reporte incluye

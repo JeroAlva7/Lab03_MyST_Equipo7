@@ -1,0 +1,7 @@
+spread,split,adf_p,half_life,mean
+estatico,train,0.000208,23.973477,1.914259
+estatico,test,0.003427,29.798640,2.100680
+estatico,val,0.054286,40.494106,2.236770
+kalman,train,0.000003,15.858492,1.913191
+kalman,test,0.010932,22.898145,1.924330
+kalman,val,0.001866,17.001667,1.915155
