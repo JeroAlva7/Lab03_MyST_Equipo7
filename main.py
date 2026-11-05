@@ -22,6 +22,7 @@ from data.validation import clean_prices, split_data, validate_prices
 from cointegration.stability import rolling_johansen, stationarity_by_split
 from kalman.diagnostics import innovation_diagnostics
 from kalman.pipeline import order_assets, run_filters
+from reporting.figures import plot_kalman_gain, plot_prices, plot_rolling_eigenvector, plot_weights
 
 
 def run_data_stage() -> tuple[pd.DataFrame, dict]:
@@ -134,6 +135,24 @@ def run_stability_stage(prices: pd.DataFrame, splits: dict, vector: dict, f1: pd
         print(table.round(4).to_string(index=False))
 
 
+def run_figures_stage(prices: pd.DataFrame, splits: dict, vector: dict) -> None:
+    """Figuras del reporte (sección 3.10) a partir de los artifacts."""
+    print("[+] Figuras del reporte")
+    out, folder = config.ARTIFACTS_DIR, config.DOCS_DIR / "figures"
+    starts = {name: df.index[0] for name, df in splits.items()}
+    filter1 = pd.read_csv(out / "filter1.csv", index_col=0, parse_dates=True)
+    filter2 = pd.read_csv(out / "filter2.csv", index_col=0, parse_dates=True)
+    rolling = pd.read_csv(out / "johansen_rolling.csv", index_col=0, parse_dates=True)
+    with open(out / "kalman_params.json", encoding="utf-8") as f:
+        burn_in_end = json.load(f)["burn_in_end"]
+
+    paths = [plot_prices(prices[vector["assets"]], starts, folder),
+             plot_weights(filter1, vector["beta"], starts, folder),
+             plot_rolling_eigenvector(rolling, starts, config.ROLLING["window"], folder),
+             plot_kalman_gain(filter1, filter2, starts, burn_in_end, folder)]
+    print(f"  {len(paths)} figuras en {folder.relative_to(config.ROOT)}")
+
+
 def main() -> None:
     """Ejecuta todas las etapas del pipeline en orden."""
     np.random.seed(config.SEED)
@@ -143,6 +162,7 @@ def main() -> None:
     vector = run_cointegration_stage(splits)
     f1 = run_kalman_stage(prices, splits, vector)
     run_stability_stage(prices, splits, vector, f1)
+    run_figures_stage(prices, splits, vector)
 
 
 if __name__ == "__main__":
