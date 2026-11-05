@@ -61,6 +61,15 @@ CANDIDATE_UNIVERSES = {
     "etf_tecnologia": (["XLK", "VGT", "IYW", "IGM"], "Mismas empresas tecnológicas subyacentes"),
 }
 
+# --- Señales (sección 3.6) --------------------------------------------------
+# Valores iniciales; z_entrada y z_salida se recalibran con grid search en entrenamiento.
+SIGNALS = {
+    "z_entry": 2.0,              # Entrada: |z| > 2 desviaciones del equilibrio
+    "z_exit": 0.5,               # Salida: el spread regresó cerca de su media
+    "z_stop": 4.0,               # Stop: el spread se alejó el doble del umbral de entrada
+    "max_holding_multiple": 3.0, # Tenencia máxima = 3 vidas medias (el spread debió revertir ~87.5%)
+}
+
 # --- Costos y capital -------------------------------------------------------
 COMMISSION = 0.00125             # 0.125% por pata, a la entrada y a la salida
 BORROW_RATE_ANNUAL = 0.0025      # 0.25% anual sobre el nocional corto
