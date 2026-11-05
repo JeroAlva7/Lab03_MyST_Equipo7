@@ -11,9 +11,9 @@ Como beta ya está fijo, cada ecuación del VECM es una regresión lineal y se e
   se aleja del equilibrio. Para que haya reversión, beta^T alpha debe ser negativo.
 - Los residuales e_t son la parte de cada movimiento que el VECM no explica.
 
-El z-score de la señal es la desviación del equilibrio normalizada con la media y la
-desviación PRIOR del filtro 2 (kalman/spread_filter.py), es decir, con estadísticos que
-solo usan información hasta t-1.
+La señal no se recalcula aquí: es la columna "z" del filtro 2 (kalman/spread_filter.py),
+la desviación del equilibrio normalizada con la media y la desviación PRIOR, es decir,
+con estadísticos que solo usan información hasta t-1.
 """
 import numpy as np
 import pandas as pd
@@ -87,11 +87,3 @@ def fit_vecm(log_train: pd.DataFrame, beta: np.ndarray, k_ar_diff: int) -> dict:
             "resid_cov": residuals.cov().to_dict(),
             "speed": speed, "half_life": half_life, "n_obs": int(len(y))}
 
-
-def equilibrium_zscore(spread: pd.Series, filter2: pd.DataFrame) -> pd.Series:
-    """z-score de la desviación del equilibrio: (S_t - mu_prior) / sigma_prior del filtro 2.
-
-    Usa la media y la desviación ANTES de actualizar el filtro con S_t, así que z_t
-    solo depende de información disponible al cierre de t (sin look-ahead).
-    """
-    return ((spread - filter2["mu_prior"]) / filter2["sigma_prior"]).rename("z")
