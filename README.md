@@ -70,10 +70,11 @@ Lab03_MyST_Equipo7/
 ├── backtest/               # motor con costos y walk-forward
 ├── performance/            # métricas
 ├── dashboard/app.py        # Streamlit
+├── reporting/              # figuras estáticas del reporte
 ├── project_management/     # charter, sprints, post-mortem
 ├── artifacts/              # salidas del backtest que lee el dashboard
 ├── tests/                  # pruebas con pytest
-└── docs/reporte.pdf
+└── docs/                   # reporte.pdf y figures/ (figuras del reporte)
 ```
 
 ## Instalación
