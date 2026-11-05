@@ -48,6 +48,10 @@ KALMAN = {
 # --- Johansen móvil (figura 4 y estabilidad) ------------------------------
 ROLLING = {"window": 756, "step": 21}   # Ventanas de 3 años que avanzan 1 mes
 
+# --- Ejemplo numérico de los filtros (sección 3.5) --------------------------
+# Días consecutivos en prueba en los que el z-score cruza -2 (señal de entrada larga)
+WORKED_EXAMPLE_DATES = ["2022-09-22", "2022-09-23", "2022-09-26", "2022-09-27", "2022-09-28"]
+
 # --- Búsqueda del universo (documentada para el control de pruebas múltiples) ---
 # Cada universo es un solo sector con un factor económico común. Todos se evalúan
 # con el mismo embudo y solo con la partición de entrenamiento; el reporte incluye

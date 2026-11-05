@@ -24,6 +24,7 @@ from cointegration.stability import rolling_johansen, stationarity_by_split
 from kalman.diagnostics import innovation_diagnostics
 from kalman.pipeline import order_assets, run_filters
 from reporting.figures import plot_kalman_gain, plot_prices, plot_rolling_eigenvector, plot_weights
+from reporting.worked_example import worked_example_filter1, worked_example_filter2
 
 
 def run_data_stage() -> tuple[pd.DataFrame, dict]:
@@ -160,6 +161,18 @@ def run_figures_stage(prices: pd.DataFrame, splits: dict, vector: dict) -> None:
              plot_rolling_eigenvector(rolling, starts, config.ROLLING["window"], folder),
              plot_kalman_gain(filter1, filter2, starts, burn_in_end, folder)]
     print(f"  {len(paths)} figuras en {folder.relative_to(config.ROOT)}")
+
+    # Ejemplo numérico trabajado (sección 3.5): días alrededor de una entrada en prueba
+    with open(out / "kalman_params.json", encoding="utf-8") as f:
+        params = json.load(f)
+    dates = pd.DatetimeIndex(config.WORKED_EXAMPLE_DATES)
+    log_prices = np.log(prices[params["assets_order"]])
+    example1 = worked_example_filter1(log_prices, filter1, params["filter1"]["q"], dates)
+    example2 = worked_example_filter2(filter1["spread"], filter2, params["filter2"], dates)
+    example1.to_csv(out / "worked_example_filter1.csv", float_format="%.10g")
+    example2.to_csv(out / "worked_example_filter2.csv", float_format="%.10g")
+    worst = max(example1["error de reconstruccion"].max(), example2["error de reconstruccion"].max())
+    print(f"  Ejemplo numérico: {len(dates)} días, error máximo de reconstrucción {worst:.1e}")
 
 
 def main() -> None:
