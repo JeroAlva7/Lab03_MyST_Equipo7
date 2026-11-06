@@ -73,6 +73,9 @@ SIGNALS = {
     "z_stop": 4.0,               # Stop: el spread se alejó el doble del umbral de entrada
     "max_holding_multiple": 3.0, # Tenencia máxima = 3 vidas medias (el spread debió revertir ~87.5%)
 }
+# La vida media es la del spread que se OPERA (spread de Kalman, AR(1) del filtro 2:
+# kalman_params.json -> filter2.half_life, 15.5 días -> 47 días), no la del spread
+# estático de Johansen (24 días), que no es el que genera las señales.
 
 # --- Costos y capital -------------------------------------------------------
 COMMISSION = 0.00125             # 0.125% por pata, a la entrada y a la salida
