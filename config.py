@@ -77,6 +77,15 @@ SIGNALS = {
 # kalman_params.json -> filter2.half_life, 15.5 días -> 47 días), no la del spread
 # estático de Johansen (24 días), que no es el que genera las señales.
 
+# --- Grid search de umbrales (sección 3.6), solo con entrenamiento ---------
+GRID = {
+    "z_entry": [1.0, 1.25, 1.5, 1.75, 2.0, 2.5],
+    "z_exit": [0.0, 0.25, 0.5, 0.75],
+    "max_holding_multiple": [2.0, 3.0, 4.0],
+    "z_stop": 4.0,               # Fijo: es un límite de riesgo, no un parámetro a optimizar
+    "min_trades": 15,            # Mínimo de operaciones en entrenamiento para competir
+}
+
 # --- Costos y capital -------------------------------------------------------
 COMMISSION = 0.00125             # 0.125% por pata, a la entrada y a la salida
 BORROW_RATE_ANNUAL = 0.0025      # 0.25% anual sobre el nocional corto
