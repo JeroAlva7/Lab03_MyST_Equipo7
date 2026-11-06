@@ -25,6 +25,13 @@ from kalman.diagnostics import innovation_diagnostics
 from kalman.pipeline import order_assets, run_filters
 from reporting.figures import plot_kalman_gain, plot_prices, plot_rolling_eigenvector, plot_weights
 from reporting.worked_example import worked_example_filter1, worked_example_filter2
+from backtest.grid_search import grid_search
+from backtest.rebalancing import compare_rebalancing
+from backtest.walk_forward import execution_settings, run_strategy, summarize_by_split
+from performance.metrics import rolling_sharpe
+from strategy.signals import max_holding_days
+from strategy.sizing import kalman_weights
+from strategy.vecm import fit_vecm
 
 
 def run_data_stage() -> tuple[pd.DataFrame, dict]:
@@ -145,6 +152,77 @@ def run_stability_stage(prices: pd.DataFrame, splits: dict, vector: dict, f1: pd
         print(table.round(4).to_string(index=False))
 
 
+def load_trading_inputs(prices: pd.DataFrame, splits: dict) -> dict:
+    """Entradas de la estrategia, leídas de los artifacts de los filtros (contrato entre módulos)."""
+    out = config.ARTIFACTS_DIR
+    with open(out / "kalman_params.json", encoding="utf-8") as f:
+        params = json.load(f)
+    assets = params["assets_order"]
+    filter1 = pd.read_csv(out / "filter1.csv", index_col=0, parse_dates=True)
+    filter2 = pd.read_csv(out / "filter2.csv", index_col=0, parse_dates=True)
+    return {"prices": prices[assets], "weights": kalman_weights(filter1, assets),
+            "z": filter2["z"], "tradable": filter2["tradable"].astype(bool),
+            "splits": pd.Series(split_labels(splits), index=prices.index),
+            "half_life": params["filter2"]["half_life"]}
+
+
+def run_strategy_stage(inputs: dict, splits: dict, vector: dict) -> dict:
+    """Etapa 4: VECM y calibración de umbrales por grid search (solo entrenamiento)."""
+    print("[4/6] Estrategia: VECM y grid search de umbrales (solo entrenamiento)")
+    out = config.ARTIFACTS_DIR
+    assets, beta0 = order_assets(vector)
+    vecm = fit_vecm(np.log(splits["train"][assets]), beta0, vector["k_ar_diff"])
+    with open(out / "vecm.json", "w", encoding="utf-8") as f:
+        json.dump(vecm, f, indent=2)
+    alphas = ", ".join(f"{a} {vecm['alpha'][a]:+.4f} (t {vecm['alpha_t'][a]:+.1f})" for a in assets)
+    print(f"  VECM alpha: {alphas}")
+    print(f"  beta'alpha = {vecm['speed']:+.4f} -> vida media {vecm['half_life']:.1f} días")
+
+    table, chosen = grid_search(**inputs, grid=config.GRID, execution=execution_settings(config))
+    table.to_csv(out / "grid_search.csv", index=False, float_format="%.6f")
+    best = table[table["eligible"]].iloc[0]
+    print(f"  Grid: {len(table)} combinaciones; elegida z_entrada {chosen['z_entry']}, "
+          f"z_salida {chosen['z_exit']}, tenencia {int(best['max_holding'])} días "
+          f"(Sharpe {best['sharpe']:.2f}, {int(best['trades'])} operaciones en entrenamiento)")
+    return chosen
+
+
+def run_backtest_stage(inputs: dict, chosen: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Etapa 5: corrida walk-forward continua con parámetros congelados y comparación de rebalanceo."""
+    print("[5/6] Backtest walk-forward con costos (parámetros congelados)")
+    out, execution = config.ARTIFACTS_DIR, execution_settings(config)
+    signals, bt, trades = run_strategy(**inputs, params=chosen, execution=execution)
+    bt["rolling_sharpe"] = rolling_sharpe(bt["equity"])
+    signals.to_csv(out / "signals.csv", float_format="%.10g")
+    bt.to_csv(out / "equity.csv", float_format="%.10g")
+    trades.to_csv(out / "trades.csv", index=False, float_format="%.6f")
+
+    policies = compare_rebalancing(**inputs, params=chosen, execution=execution,
+                                   policies=config.REBALANCE_POLICIES)
+    policies.to_csv(out / "rebalancing.csv", float_format="%.6f")
+    print(f"  {len(trades)} operaciones | comisiones ${bt['commission'].sum():,.0f} | "
+          f"préstamo ${bt['borrow_cost'].sum():,.0f} | valor final ${bt['equity'].iloc[-1]:,.0f}")
+    daily = policies.loc["diario"]
+    print(f"  Rebalanceo diario: {int(daily['rebalance_days'])} días, comisiones "
+          f"${daily['commission_rebalance']:,.0f} (ver rebalancing.csv para las bandas)")
+    return bt, trades
+
+
+def run_performance_stage(inputs: dict, bt: pd.DataFrame, trades: pd.DataFrame, chosen: dict) -> None:
+    """Etapa 6: tarjeta de desempeño por partición y total (metrics.json)."""
+    print("[6/6] Métricas")
+    summary = summarize_by_split(bt, trades, inputs["tradable"])
+    metrics = {"params": {**chosen, "max_holding_days": max_holding_days(
+                   inputs["half_life"], chosen["max_holding_multiple"]),
+                   "spread_half_life": inputs["half_life"]},
+               "by_split": summary.to_dict(orient="index")}
+    with open(config.ARTIFACTS_DIR / "metrics.json", "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
+    with pd.option_context("display.width", 160, "display.max_columns", 20):
+        print(summary[["return", "sharpe", "sortino", "calmar", "max_drawdown", "trades",
+                       "win_rate", "profit_factor"]].round(3))
+
+
 def run_figures_stage(prices: pd.DataFrame, splits: dict, vector: dict) -> None:
     """Figuras del reporte (sección 3.10) a partir de los artifacts."""
     print("[+] Figuras del reporte")
@@ -184,6 +262,10 @@ def main() -> None:
     vector = run_cointegration_stage(splits)
     f1 = run_kalman_stage(prices, splits, vector)
     run_stability_stage(prices, splits, vector, f1)
+    inputs = load_trading_inputs(prices, splits)
+    chosen = run_strategy_stage(inputs, splits, vector)
+    bt, trades = run_backtest_stage(inputs, chosen)
+    run_performance_stage(inputs, bt, trades, chosen)
     run_figures_stage(prices, splits, vector)
 
 
