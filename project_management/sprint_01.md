@@ -16,11 +16,11 @@ pasar las pruebas con `pytest` y contener el reporte en `docs/reporte.pdf`.
 | 4 | Filtro de Kalman 1 (pesos dinámicos) | Jerónimo | Hecho |
 | 5 | Filtro de Kalman 2 (media y varianza del spread) y Johansen móvil | Jerónimo | Hecho |
 | 6 | Pruebas de causalidad, normalización e innovaciones | Jerónimo | Hecho |
-| 7 | VECM, reglas de señal y sizing | Raúl | Pendiente |
-| 8 | Backtest multi-pata con costos y bitácora | Raúl | Pendiente |
-| 9 | Prueba de contabilidad multi-pata | Raúl | Pendiente |
-| 10 | Grid search, walk-forward y rebalanceo diario contra banda | Raúl | Pendiente |
-| 11 | Métricas, integración en main.py y artifacts | Raúl | Pendiente |
+| 7 | VECM, reglas de señal y sizing | Raúl | Hecho |
+| 8 | Backtest multi-pata con costos y bitácora | Raúl | Hecho |
+| 9 | Prueba de contabilidad multi-pata | Raúl | Hecho |
+| 10 | Grid search, walk-forward y rebalanceo diario contra banda | Raúl | Hecho |
+| 11 | Métricas, integración en main.py y artifacts | Raúl | Hecho |
 | 12 | Dashboard (vista ejecutiva y técnica) | Raúl | Pendiente |
 | 13 | Figuras obligatorias (1, 3-6 Jerónimo; 2, 7, 8 Raúl) | Ambos | En curso: 1, 3, 4 y 5 hechas |
 | 14 | Reporte ejecutivo, presentación y post-mortem | Ambos | Pendiente |
@@ -42,3 +42,25 @@ El detalle de commits por integrante está en `plan_de_trabajo.md`.
   validación (ADF p = 0.054); con pesos de Kalman sigue siéndolo (p = 0.002).
 - **4 nov — Entorno de Python.** VS Code activaba un entorno virtual de otro proyecto; se corrigió seleccionando
   el intérprete de `.venv` del repositorio.
+- **4 nov — Retraso en la segunda mitad.** El 4 de noviembre se terminaron R1 a R3; R4 (sizing), planeado para ese
+  día, pasó al jueves 5. Se recuperó el mismo jueves: R4 a R13 quedaron terminados un día antes de lo planeado.
+- **4 nov — Señal sin duplicar el filtro 2.** La primera versión del VECM recalculaba el z-score, que ya es la
+  columna `z` del filtro 2 (diferencia máxima de 7·10⁻⁸). Se eliminó la función duplicada: las señales leen
+  directamente la salida del filtro 2 y el VECM se usa para reportar las velocidades de ajuste α.
+- **5 nov — Tenencia máxima con la vida media equivocada.** Se calculaba con la vida media del spread estático de
+  Johansen (24 días), pero las señales operan el spread de Kalman, cuya vida media es de 15.5 días (AR(1) del
+  filtro 2). Se corrigió; con el múltiplo inicial de 3, la tenencia máxima bajó de 72 a 47 días.
+- **5 nov — Regla de salida incompleta.** "Salir si |z| < z_salida" dejaba posiciones abiertas cuando el z-score
+  cruzaba la media de un día para otro sin caer en la banda (se mueve hasta 2.16 en un día). Pasó 3 días con los
+  umbrales iniciales y 17 con z_entrada = 1.0; con z_salida = 0 la salida era imposible. Se corrigió: un largo
+  sale si z > −z_salida y un corto si z < +z_salida. También se impidió entrar si |z| ya rebasó el stop.
+- **5 nov — Exposición fuera del 80%.** Sin rebalanceo, la exposición bruta derivaba entre 66% y 96.5% del
+  capital mientras la posición estaba abierta. El rebalanceo diario la mantiene en 80% a un costo de $10,670 en
+  comisiones; una banda de 5% ahorraría 85% de ese costo con exposición entre 73% y 87% (`rebalancing.csv`).
+- **5 nov — Pocas operaciones fuera de muestra.** Con los umbrales elegidos hay 5 operaciones en prueba y 5 en
+  validación. El grid search mostró que bajar z_entrada aumenta las operaciones pero reduce el Sharpe en
+  entrenamiento (0.24 con z = 1.0 contra 0.41 con z = 2.0) porque cada operación paga ~$2,000 de comisiones. Se
+  aceptó la limitación y se exige un mínimo de 15 operaciones en entrenamiento para que una combinación compita.
+- **5 nov — Diferencias de versión de Python.** Correr `main.py` con Python 3.13 en lugar de 3.12 cambia los
+  últimos decimales de algunos artifacts; esos cambios se descartan antes de cada commit para no generar
+  conflictos.
