@@ -6,7 +6,10 @@ Dirección de la posición en el spread:
      0  sin posición
 
 Una posición abierta se cierra por la primera de estas razones:
-    "salida"   |z_t| < z_salida: el spread regresó al equilibrio (ganancia esperada)
+    "salida"   el spread regresó al equilibrio: z_t > -z_salida en un largo, z_t < +z_salida en
+               un corto. Incluye |z_t| < z_salida (la regla del enunciado) y también el caso en
+               que z cruza la media de un día para otro sin caer dentro de la banda: el z-score
+               llega a moverse más de 2 unidades en un día, más que el ancho de la banda (2 x z_salida).
     "stop"     el spread se alejó todavía más: z_t < -z_stop en un largo, z_t > +z_stop en un corto
     "tiempo"   se cumplió la tenencia máxima, ligada a la vida media del spread
     "burn-in"  el filtro aún no es confiable o no hay z-score
@@ -58,7 +61,7 @@ def generate_signals(z: pd.Series, tradable: pd.Series, z_entry: float, z_exit: 
             direction, days_held = 0, 0
         elif direction != 0:
             days_held += 1
-            if abs(z_t) < z_exit:
+            if direction * z_t > -z_exit:            # regresó a la banda o ya la cruzó
                 event = "salida"
             elif direction * z_t < -z_stop:
                 event, rearmed = "stop", False
