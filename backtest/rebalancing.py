@@ -12,12 +12,12 @@ from performance.metrics import daily_returns, sharpe_ratio
 
 def compare_rebalancing(prices: pd.DataFrame, weights: pd.DataFrame, z: pd.Series,
                         tradable: pd.Series, splits: pd.Series, params: dict, half_life: float,
-                        costs: dict, policies: dict) -> pd.DataFrame:
+                        execution: dict, policies: dict) -> pd.DataFrame:
     """Corre la estrategia con cada política de rebalanceo y resume costos y exposición.
 
     Args:
         policies: {nombre: banda} con banda = 0 (diario), > 0 (banda) o None (nunca).
-        costs: argumentos de run_backtest; aquí se sustituye "rebalance_band".
+        execution: parámetros de ejecución de run_backtest; aquí se sustituye "rebalance_band".
 
     Returns:
         Una fila por política: días con rebalanceo, comisiones de entrada/salida y de
@@ -27,7 +27,7 @@ def compare_rebalancing(prices: pd.DataFrame, weights: pd.DataFrame, z: pd.Serie
     rows = []
     for name, band in policies.items():
         _, bt, _ = run_strategy(prices, weights, z, tradable, splits, params, half_life,
-                                {**costs, "rebalance_band": band})
+                                {**execution, "rebalance_band": band})
         open_days = bt[bt["direction"] != 0]
         exposure = (open_days["long_notional"] - open_days["short_notional"]) / open_days["equity"]
         rows.append({"policy": name, "band": band, "rebalance_days": int(bt["rebalanced"].sum()),

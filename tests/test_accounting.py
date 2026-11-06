@@ -12,8 +12,8 @@ import pytest
 
 import config
 from backtest.engine import run_backtest
+from backtest.walk_forward import execution_settings, run_strategy
 from kalman.pipeline import order_assets, run_filters
-from strategy.signals import generate_signals, max_holding_days
 from strategy.sizing import kalman_weights
 
 
@@ -24,12 +24,9 @@ def backtest_run(prices, log_prices, n_train, vector):
     f1, f2, params = run_filters(log_prices, beta0, n_train, config.KALMAN)
     assets = list(log_prices.columns)
     tradable = pd.Series(np.arange(len(f2)) >= config.KALMAN["burn_in"], index=f2.index)
-    s = config.SIGNALS
-    max_holding = max_holding_days(params["filter2"]["half_life"], s["max_holding_multiple"])
-    signals = generate_signals(f2["z"], tradable, s["z_entry"], s["z_exit"], s["z_stop"], max_holding)
-    bt = run_backtest(prices[assets], kalman_weights(f1, assets), signals["direction"],
-                      config.INITIAL_CAPITAL, config.CAPITAL_FRACTION, config.COMMISSION,
-                      config.BORROW_RATE_ANNUAL, config.TRADING_DAYS, config.REBALANCE_BAND)
+    splits = pd.Series(np.where(np.arange(len(f2)) < n_train, "train", "out"), index=f2.index)
+    _, bt, _ = run_strategy(prices[assets], kalman_weights(f1, assets), f2["z"], tradable, splits,
+                            config.SIGNALS, params["filter2"]["half_life"], execution_settings(config))
     return bt, prices[assets].to_numpy(), assets
 
 

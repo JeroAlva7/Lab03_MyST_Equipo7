@@ -18,15 +18,23 @@ from strategy.signals import generate_signals, max_holding_days
 SPLITS = ("train", "test", "val")
 
 
+def execution_settings(cfg) -> dict:
+    """Parámetros de ejecución de config.py: capital, 80%, comisión, préstamo y rebalanceo."""
+    return {"capital": cfg.INITIAL_CAPITAL, "fraction": cfg.CAPITAL_FRACTION,
+            "commission": cfg.COMMISSION, "borrow_rate": cfg.BORROW_RATE_ANNUAL,
+            "trading_days": cfg.TRADING_DAYS, "rebalance_band": cfg.REBALANCE_BAND}
+
+
 def run_strategy(prices: pd.DataFrame, weights: pd.DataFrame, z: pd.Series, tradable: pd.Series,
                  splits: pd.Series, params: dict, half_life: float,
-                 costs: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+                 execution: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Señales -> backtest -> bitácora con un juego de parámetros.
 
     Args:
         params: "z_entry", "z_exit", "z_stop" y "max_holding_multiple".
         half_life: vida media del spread operado (filtro 2).
-        costs: argumentos de run_backtest (capital, fraction, commission, borrow_rate, trading_days).
+        execution: parámetros de ejecución de run_backtest (capital, fraction, commission,
+            borrow_rate, trading_days, rebalance_band); ver execution_settings().
 
     Returns:
         (señales, backtest diario con partición y drawdown, bitácora de operaciones).
@@ -34,7 +42,7 @@ def run_strategy(prices: pd.DataFrame, weights: pd.DataFrame, z: pd.Series, trad
     max_holding = max_holding_days(half_life, params["max_holding_multiple"])
     signals = generate_signals(z, tradable, params["z_entry"], params["z_exit"],
                                params["z_stop"], max_holding)
-    bt = run_backtest(prices, weights, signals["direction"], **costs)
+    bt = run_backtest(prices, weights, signals["direction"], **execution)
     bt["split"] = splits.to_numpy()
     bt["drawdown"] = add_drawdown(bt["equity"])
     trades = build_trade_log(bt, signals["event"], splits)
