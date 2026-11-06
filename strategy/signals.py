@@ -14,7 +14,8 @@ Una posición abierta se cierra por la primera de estas razones:
 El stop y la tenencia máxima existen porque esta estrategia pierde dinero con una posición
 que deja de revertir, no con muchas pérdidas pequeñas. Después de un stop o de un cierre
 por tiempo no se vuelve a entrar hasta que |z| regrese a la banda de entrada; si no, se
-reabriría al día siguiente la misma apuesta que se acaba de cortar.
+reabriría al día siguiente la misma apuesta que se acaba de cortar. Tampoco se entra si el
+z-score ya está más allá del stop: la posición se cerraría por stop al día siguiente.
 
 La señal de t usa solo z_t, conocido al cierre de t; el backtest la ejecuta a partir de t+1.
 """
@@ -67,9 +68,10 @@ def generate_signals(z: pd.Series, tradable: pd.Series, z_entry: float, z_exit: 
                 direction, days_held = 0, 0
         else:
             rearmed = rearmed or abs(z_t) < z_entry
-            if rearmed and z_t < -z_entry:
+            in_band = z_entry < abs(z_t) <= z_stop    # nunca se entra ya más allá del stop
+            if rearmed and in_band and z_t < 0:
                 direction, event = 1, "entrada larga"
-            elif rearmed and z_t > z_entry:
+            elif rearmed and in_band and z_t > 0:
                 direction, event = -1, "entrada corta"
         rows.append((z_t, direction, days_held, event))
 
