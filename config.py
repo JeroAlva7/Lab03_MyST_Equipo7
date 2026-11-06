@@ -85,6 +85,9 @@ GRID = {
     "z_stop": 4.0,               # Fijo: es un límite de riesgo, no un parámetro a optimizar
     "min_trades": 15,            # Mínimo de operaciones en entrenamiento para competir
 }
+# La Q del filtro 1 NO entra al grid: se fijó por diseño (KALMAN["q_weights"]). Optimizarla
+# junto con los umbrales sobreajusta; se reporta como análisis de sensibilidad ex post.
+Q_SENSITIVITY = [1e-9, 1e-8, 1e-7]
 
 # --- Costos y capital -------------------------------------------------------
 COMMISSION = 0.00125             # 0.125% por pata, a la entrada y a la salida

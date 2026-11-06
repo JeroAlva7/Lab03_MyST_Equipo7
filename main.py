@@ -14,25 +14,26 @@ import numpy as np
 import pandas as pd
 
 import config
+from backtest.grid_search import grid_search
+from backtest.rebalancing import compare_rebalancing
+from backtest.sensitivity import q_sensitivity
+from backtest.walk_forward import execution_settings, run_strategy, summarize_by_split
 from cointegration.correlation import rolling_pair_correlation
 from cointegration.integration import all_integrated_of_order_one, integration_order_table
 from cointegration.johansen import johansen_table, johansen_test
 from cointegration.selection import pick_final, run_selection_funnel
+from cointegration.stability import rolling_johansen, stationarity_by_split
 from data.loader import load_prices
 from data.validation import clean_prices, split_data, validate_prices
-from cointegration.stability import rolling_johansen, stationarity_by_split
 from kalman.diagnostics import innovation_diagnostics
 from kalman.pipeline import order_assets, run_filters
-from reporting.figures import plot_kalman_gain, plot_prices, plot_rolling_eigenvector, plot_weights
-from reporting.worked_example import worked_example_filter1, worked_example_filter2
-from backtest.grid_search import grid_search
-from backtest.rebalancing import compare_rebalancing
-from backtest.walk_forward import execution_settings, run_strategy, summarize_by_split
 from performance.metrics import rolling_sharpe
+from reporting.figures import (plot_grid_robustness, plot_kalman_gain, plot_prices,
+                               plot_rolling_eigenvector, plot_weights, plot_zscore)
+from reporting.worked_example import worked_example_filter1, worked_example_filter2
 from strategy.signals import max_holding_days
 from strategy.sizing import kalman_weights
 from strategy.vecm import fit_vecm
-
 
 def run_data_stage() -> tuple[pd.DataFrame, dict]:
     """Etapa 1: carga, limpia, valida y parte los precios."""
@@ -223,6 +224,20 @@ def run_performance_stage(inputs: dict, bt: pd.DataFrame, trades: pd.DataFrame, 
                        "win_rate", "profit_factor"]].round(3))
 
 
+def run_sensitivity_stage(prices: pd.DataFrame, splits: dict, vector: dict, inputs: dict) -> None:
+    """Sensibilidad ex post a la Q del filtro 1 (no cambia la elección; ver backtest/sensitivity.py)."""
+    print("[+] Sensibilidad a la Q del filtro 1 (ex post, no se usa para elegir)")
+    assets, beta0 = order_assets(vector)
+    table = q_sensitivity(prices[assets], beta0, len(splits["train"]), config.KALMAN,
+                          config.Q_SENSITIVITY, inputs["tradable"], inputs["splits"], config.GRID,
+                          execution_settings(config))
+    table.to_csv(config.ARTIFACTS_DIR / "q_sensitivity.csv", index=False, float_format="%.6g")
+    view = table.pivot(index="q_weights", columns="split", values=["sharpe", "spread_adf_p"])
+    with pd.option_context("display.width", 120):
+        print(view[[("sharpe", s) for s in ("train", "test", "val")] +
+                   [("spread_adf_p", s) for s in ("train", "test", "val")]].round(3))
+
+
 def run_figures_stage(prices: pd.DataFrame, splits: dict, vector: dict) -> None:
     """Figuras del reporte (sección 3.10) a partir de los artifacts."""
     print("[+] Figuras del reporte")
@@ -238,6 +253,12 @@ def run_figures_stage(prices: pd.DataFrame, splits: dict, vector: dict) -> None:
              plot_weights(filter1, vector["beta"], starts, folder),
              plot_rolling_eigenvector(rolling, starts, config.ROLLING["window"], folder),
              plot_kalman_gain(filter1, filter2, starts, burn_in_end, folder)]
+    signals = pd.read_csv(out / "signals.csv", index_col=0, parse_dates=True)
+    grid = pd.read_csv(out / "grid_search.csv")
+    with open(out / "metrics.json", encoding="utf-8") as f:
+        chosen = json.load(f)["params"]
+    paths += [plot_zscore(signals, chosen, starts, folder),
+              plot_grid_robustness(grid, chosen, config.GRID["min_trades"], folder)]
     print(f"  {len(paths)} figuras en {folder.relative_to(config.ROOT)}")
 
     # Ejemplo numérico trabajado (sección 3.5): días alrededor de una entrada en prueba
@@ -266,6 +287,7 @@ def main() -> None:
     chosen = run_strategy_stage(inputs, splits, vector)
     bt, trades = run_backtest_stage(inputs, chosen)
     run_performance_stage(inputs, bt, trades, chosen)
+    run_sensitivity_stage(prices, splits, vector, inputs)
     run_figures_stage(prices, splits, vector)
 
 
