@@ -80,7 +80,9 @@ log-precios entran con signo menos; su magnitud (≈ 0.0015 a 0.0019) es lo que 
   293 días). La causa es que el modelo supone vₜ ruido blanco, mientras que el spread real es autocorrelado
   (revierte en ~15 días). Con Q = 10⁻⁸ los pesos solo siguen cambios estructurales lentos: β_SO pasa de
   0.181 a 0.177 en todo el entrenamiento y a 0.141 al final de la muestra (figura 3). La razón Q/R ≈ 8.8 × 10⁻⁶.
-  En el sistema completo, Q es un parámetro θ de la política que el grid search puede mover (10⁻⁹ a 10⁻⁷).
+  En el sistema completo Q queda **fuera del grid search**: optimizada junto con los umbrales elige 10⁻⁹,
+  que maximiza el Sharpe de entrenamiento pero deja un spread no estacionario fuera de muestra
+  (sobreajuste). La comparación 10⁻⁹ / 10⁻⁸ / 10⁻⁷ se reporta ex post en `artifacts/q_sensitivity.csv`.
 - **Inicialización:** ẑ₀ = (media del spread de Johansen en entrenamiento, 0.181, −0.614, −0.099) y
   P₀ = 10⁻⁶ · I (confianza alta en el vector de Johansen).
 - **Burn-in:** 60 días hábiles (unas cuatro vidas medias), hasta el 30 de enero de 2012; no se opera antes.

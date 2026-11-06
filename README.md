@@ -140,8 +140,10 @@ módulo indicado y sus valores viven en `config.py`.
 ### Filtro de Kalman 1 (`kalman/weights_filter.py`)
 - El estado incluye un **intercepto cₜ** además de los pesos libres (SO, AEP, XEL); el peso de DUK queda fijo
   en +1. Así el spread es Sₜ = cₜ + vₜ.
-- Transición de caminata aleatoria (A = I) con **Q = 10⁻⁸·I, fijada por diseño**: elegirla por máxima
-  verosimilitud hacía que los pesos absorbieran la reversión del spread (ver `docs/powell_formulacion.md`).
+- Transición de caminata aleatoria (A = I) con **Q = 10⁻⁸·I, fijada por diseño antes del backtest**:
+  elegirla por máxima verosimilitud hacía que los pesos absorbieran la reversión del spread (ver
+  `docs/powell_formulacion.md`). Con 10⁻⁸ los pesos se mueven lento y el spread de Kalman es estacionario
+  en entrenamiento. Q **no entra al grid search**; ver "Calibración" abajo.
 - **R** = varianza del spread de Johansen en entrenamiento. Inicialización en el vector de Johansen con
   P₀ = 10⁻⁶·I.
 - El spread se calcula con los **pesos prior** (información hasta t − 1).
@@ -157,9 +159,54 @@ módulo indicado y sus valores viven en `config.py`.
 
 ### Señales y VECM (`strategy/`)
 - Por indicación del profesor, los "residuales" de la sección 3.6 corresponden a la **salida normalizada del
-  filtro de Kalman 2**: las señales se generan sobre su z-score. El VECM se estima con el vector de Johansen
-  fijo como término de corrección de error y se usa para reportar las velocidades de ajuste α.
-- La señal del día t usa solo zₜ (conocido al cierre de t) y se ejecuta a partir de t + 1.
+  filtro de Kalman 2**: las señales se generan sobre su z-score. El VECM se estima en entrenamiento con el
+  vector de Johansen fijo como término de corrección de error (OLS ecuación por ecuación) y se usa para
+  reportar las velocidades de ajuste α y verificar −2 < β'α < 0 (β'α = −0.026, vida media de 26 días).
+- **Entrada:** spread largo (+1) si −z_stop ≤ zₜ < −z_entrada; corto (−1) si z_entrada < zₜ ≤ z_stop. No se
+  entra si |zₜ| ya pasó el stop.
+- **Salida:** se cierra cuando dirección·zₜ > −z_salida. Para z_salida > 0 es la regla del enunciado
+  (|zₜ| < z_salida) **más** el caso en que el z-score cruza la banda de un día a otro y aparece del otro
+  lado; sin esa extensión la posición quedaría abierta justo cuando ya se cumplió la reversión. Con
+  z_salida = 0 equivale a "salir al cruzar la media".
+- **Stop:** |zₜ| > z_stop = 4, fijo como límite de riesgo (no se optimiza).
+- **Tenencia máxima:** múltiplo de la vida media del filtro 2 (15.5 días), redondeado hacia arriba.
+- Después de un stop o de una salida por tiempo, no se vuelve a entrar hasta que |zₜ| regrese por debajo de
+  z_entrada (**re-armado**): así no se reabre la misma divergencia que acaba de fallar.
+- La señal del día t usa solo zₜ (conocido al cierre de t) y se ejecuta al cierre de t + 1.
+- **Sizing:** Nᵢ = 0.8 · V · β̂ᵢ / Σ|β̂ⱼ|, con V el valor del portafolio y β̂ los pesos del filtro 1 del
+  día de la decisión. Se permiten **acciones fraccionarias** (simplificación estándar con $1,000,000 de
+  capital: el error de redondeo es de centavos por pata).
+
+### Backtest y costos (`backtest/engine.py`)
+- **Ejecución:** la orden decidida al cierre de t − 1 se ejecuta al precio de cierre de t, con los pesos de
+  t − 1. Ninguna decisión usa el precio con el que se ejecuta.
+- **Comisión:** 0.125% del nocional operado en **cada pata**, a la entrada, a la salida y en cada
+  rebalanceo.
+- **Préstamo:** 0.25% anual / 252 sobre el nocional corto al cierre de cada día con posición abierta.
+- **Rebalanceo:** mientras la posición está abierta se rebalancea **diario** al objetivo con los β̂ más
+  recientes (política principal). Como comparación, `artifacts/rebalancing.csv` repite la corrida con
+  bandas de no-rebalanceo de 2%, 5% y 10% y sin rebalanceo.
+- **Walk-forward:** una sola corrida continua sobre las tres particiones con los parámetros congelados de
+  entrenamiento; los filtros siguen actualizándose día a día con información pasada. Las operaciones se
+  asignan a la partición en que se abrieron.
+- **Métricas:** rendimientos diarios del valor total (los días sin posición cuentan como 0), anualización
+  con 252 días y tasa libre de riesgo 0. Sharpe móvil con ventana de 252 días.
+
+### Calibración (`backtest/grid_search.py`)
+- **Grid search solo en entrenamiento** sobre z_entrada ∈ {1, 1.25, 1.5, 1.75, 2, 2.5},
+  z_salida ∈ {0, 0.25, 0.5, 0.75} y tenencia máxima ∈ {2, 3, 4} vidas medias (72 combinaciones válidas con
+  z_salida < z_entrada). Criterio: **Sharpe neto de costos**.
+- Para competir, una combinación debe hacer **al menos 15 operaciones** en entrenamiento: con menos, el
+  Sharpe depende de un puñado de operaciones y no es confiable (por eso z_entrada = 2.5, con 8–9
+  operaciones, queda fuera aunque tenga el Sharpe más alto).
+- Elegida: z_entrada = 2.0, z_salida = 0, tenencia de 4 vidas medias (63 días). La figura A1
+  (`docs/figures/figA1_grid_robustez.png`) muestra que la elección está en una zona estable: z_salida = 0
+  es la mejor columna para cualquier z_entrada y tenencia.
+- **La Q del filtro 1 no entra al grid.** Optimizarla junto con los umbrales elige Q = 10⁻⁹ (Sharpe de
+  entrenamiento 0.70 contra 0.41), pero con esa Q los pesos casi no se adaptan y el spread de Kalman deja de
+  ser estacionario fuera de muestra; su Sharpe en prueba y validación es menor. Es sobreajuste: el grid
+  premia la Q que mejor explica el pasado. Esta comparación se reporta **ex post** en
+  `artifacts/q_sensitivity.csv` y no se usó para elegir.
 
 ### Pruebas y diagnóstico (`tests/`, `cointegration/stability.py`)
 - **Prueba 4:** tolerancia declarada de varianza de las innovaciones normalizadas entre 0.8 y 1.2 y Ljung-Box
