@@ -84,7 +84,3 @@ def run_backtest(prices: pd.DataFrame, weights: pd.DataFrame, direction: pd.Seri
                   "legs_traded", "commission", "borrow_cost"])
     return pd.DataFrame(rows, index=prices.index, columns=columns)
 
-
-def add_drawdown(equity: pd.Series) -> pd.Series:
-    """Drawdown: caída porcentual del valor del portafolio desde su máximo previo."""
-    return (equity / equity.cummax() - 1).rename("drawdown")

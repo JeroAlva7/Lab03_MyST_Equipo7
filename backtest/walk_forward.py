@@ -10,9 +10,9 @@ Protocolo (sin look-ahead):
 """
 import pandas as pd
 
-from backtest.engine import add_drawdown, run_backtest
+from backtest.engine import run_backtest
 from backtest.trades import build_trade_log
-from performance.metrics import daily_returns, sharpe_ratio
+from performance.metrics import drawdown, performance_summary
 from strategy.signals import generate_signals, max_holding_days
 
 SPLITS = ("train", "test", "val")
@@ -44,29 +44,27 @@ def run_strategy(prices: pd.DataFrame, weights: pd.DataFrame, z: pd.Series, trad
                                params["z_stop"], max_holding)
     bt = run_backtest(prices, weights, signals["direction"], **execution)
     bt["split"] = splits.to_numpy()
-    bt["drawdown"] = add_drawdown(bt["equity"])
+    bt["drawdown"] = drawdown(bt["equity"])
     trades = build_trade_log(bt, signals["event"], splits)
     return signals, bt, trades
 
 
 def summarize_by_split(bt: pd.DataFrame, trades: pd.DataFrame, tradable: pd.Series) -> pd.DataFrame:
-    """Resultado de cada partición dentro de la corrida continua.
+    """Tarjeta de desempeño de cada partición dentro de la corrida continua, y del total.
 
-    El rendimiento se mide desde el valor al cierre del día previo a la partición; el drawdown,
-    contra el máximo alcanzado dentro de la misma partición; las operaciones se asignan a la
-    partición en que se abrieron.
+    Cada tramo se mide desde el valor al cierre del día previo a su primer día operable (en
+    entrenamiento se excluye el burn-in); el drawdown se mide contra el máximo del mismo tramo;
+    las operaciones se asignan a la partición en que se abrieron.
     """
+    operable = tradable.to_numpy()
+    segments = {name: (bt["split"] == name).to_numpy() & operable for name in SPLITS}
+    segments["total"] = operable
     rows = []
-    for name in SPLITS:
-        mask = (bt["split"] == name).to_numpy()
-        start = mask.argmax()
-        equity = bt["equity"].iloc[max(start - 1, 0):start + mask.sum()]
-        own = trades[trades["split"] == name]
-        rows.append({"split": name, "start": bt.index[start].date(), "end": bt.index[mask][-1].date(),
-                     "return": float(equity.iloc[-1] / equity.iloc[0] - 1),
-                     "net_pnl": float(equity.iloc[-1] - equity.iloc[0]),
-                     "sharpe": sharpe_ratio(daily_returns(equity)[tradable[equity.index[1:]]]),
-                     "max_drawdown": float(add_drawdown(equity).min()),
-                     "trades": int(len(own)),
-                     "win_rate": float((own["net_pnl"] > 0).mean()) if len(own) else 0.0})
+    for name, mask in segments.items():
+        start, end = mask.argmax(), len(mask) - 1 - mask[::-1].argmax()
+        equity = bt["equity"].iloc[max(start - 1, 0):end + 1]
+        own = trades if name == "total" else trades[trades["split"] == name]
+        rows.append({"split": name, "start": str(bt.index[start].date()),
+                     "end": str(bt.index[end].date()),
+                     **performance_summary(equity, own["net_pnl"])})
     return pd.DataFrame(rows).set_index("split")
