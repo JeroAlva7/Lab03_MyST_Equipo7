@@ -11,7 +11,9 @@ import matplotlib
 matplotlib.use("Agg")  # Genera archivos sin abrir ventanas
 import matplotlib.dates as mdates  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm  # noqa: E402
 
 # Un color fijo por activo (paleta validada para daltonismo); el gris es neutro
 ASSET_COLORS = {"DUK": "#2a78d6", "SO": "#eb6834", "AEP": "#1baf7a", "XEL": "#eda100"}
@@ -121,3 +123,75 @@ def plot_kalman_gain(filter1: pd.DataFrame, filter2: pd.DataFrame, split_starts:
     bottom.set_yscale("log")
     bottom.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
     return save(fig, folder, "fig05_ganancia_kalman.png")
+
+
+def plot_zscore(signals: pd.DataFrame, params: dict, split_starts: dict, folder: Path) -> Path:
+    """Figura 6: z-score prior del filtro 2 con los umbrales elegidos en entrenamiento.
+
+    Se sombrean los días con posición abierta (azul: spread largo; naranja: spread corto).
+    """
+    z, direction = signals["z"], signals["direction"]
+    fig, ax = plt.subplots()
+    ax.plot(z.index, z, color=NEUTRAL, linewidth=0.7, label="z-score (prior, causal)")
+    levels = [(params["z_entry"], "#2a78d6", "-", f"Entrada ±{params['z_entry']:g}"),
+              (params["z_stop"], "#e34948", "--", f"Stop ±{params['z_stop']:g}")]
+    for level, color, style, label in levels:
+        ax.axhline(level, color=color, linestyle=style, linewidth=1, label=label)
+        ax.axhline(-level, color=color, linestyle=style, linewidth=1)
+    exit_label = f"Salida ±{params['z_exit']:g}" if params["z_exit"] else "Salida: cruce de 0"
+    ax.axhline(params["z_exit"], color="#1baf7a", linewidth=1, label=exit_label)
+    if params["z_exit"]:
+        ax.axhline(-params["z_exit"], color="#1baf7a", linewidth=1)
+    bottom, top = -params["z_stop"] * 1.5, params["z_stop"] * 1.5
+    for side, color, label in [(1, "#2a78d6", "Spread largo"), (-1, "#eb6834", "Spread corto")]:
+        ax.fill_between(z.index, bottom, top, where=(direction == side).to_numpy(), color=color,
+                        alpha=0.10, linewidth=0, label=label)
+    ax.set_ylim(bottom, top)
+    mark_splits(ax, split_starts)
+    ax.set(title="Figura 6. z-score del spread con umbrales de entrada, salida y stop",
+           xlabel="Fecha", ylabel=r"$z_t = (S_t - \mu_{t|t-1}) / \sigma_{t|t-1}$")
+    ax.legend(ncol=3, loc="upper left", bbox_to_anchor=(0, -0.12), fontsize=9)
+    return save(fig, folder, "fig06_zscore.png")
+
+
+def plot_grid_robustness(grid: pd.DataFrame, chosen: dict, min_trades: int, folder: Path) -> Path:
+    """Figura A1: Sharpe de entrenamiento de cada combinación del grid (robustez de la elección).
+
+    Un panel por múltiplo de tenencia máxima; color divergente centrado en 0 (azul gana, rojo
+    pierde). Las celdas tachadas no compiten por tener menos de `min_trades` operaciones.
+    """
+    multiples = sorted(grid["max_holding_multiple"].unique())
+    limit = float(np.nanmax(np.abs(grid["sharpe"])))
+    cmap = LinearSegmentedColormap.from_list("sharpe", ["#e34948", "#f2f2f2", "#2a78d6"])
+    norm = TwoSlopeNorm(vmin=-limit, vcenter=0.0, vmax=limit)
+    fig, axes = plt.subplots(1, len(multiples), figsize=(4.2 * len(multiples) + 1, 4.8), sharey=True)
+    for ax, multiple in zip(np.atleast_1d(axes), multiples):
+        panel = grid[grid["max_holding_multiple"] == multiple]
+        sharpe = panel.pivot(index="z_entry", columns="z_exit", values="sharpe")
+        trades = panel.pivot(index="z_entry", columns="z_exit", values="trades")
+        image = ax.imshow(sharpe.to_numpy(), cmap=cmap, norm=norm, origin="lower", aspect="auto")
+        for i, z_in in enumerate(sharpe.index):
+            for j, z_out in enumerate(sharpe.columns):
+                few = trades.iloc[i, j] < min_trades
+                if few:  # Se atenúa la celda y se tacha: no compite en la elección
+                    ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, facecolor="white",
+                                               alpha=0.55, linewidth=0))
+                    ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False, hatch="//",
+                                               edgecolor="#c4c4c4", linewidth=0))
+                ax.text(j, i, f"{sharpe.iloc[i, j]:.2f}\n{int(trades.iloc[i, j])} op",
+                        ha="center", va="center", fontsize=8, color="#6b6b6b" if few else "#1a1a1a")
+                if (z_in, z_out, multiple) == (chosen["z_entry"], chosen["z_exit"],
+                                               chosen["max_holding_multiple"]):
+                    ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False,
+                                               edgecolor="#1a1a1a", linewidth=2.2))
+        ax.set_xticks(range(len(sharpe.columns)), [f"{v:g}" for v in sharpe.columns])
+        ax.set_yticks(range(len(sharpe.index)), [f"{v:g}" for v in sharpe.index])
+        ax.set_title(f"Tenencia máxima = {multiple:g} × vida media", fontsize=11)
+        ax.set_xlabel("z de salida")
+        ax.grid(False)
+    np.atleast_1d(axes)[0].set_ylabel("z de entrada")
+    fig.colorbar(image, ax=axes, label="Sharpe anualizado (entrenamiento)", shrink=0.85)
+    fig.suptitle("Figura A1. Robustez del grid search: Sharpe de entrenamiento por combinación\n"
+                 f"(recuadro negro = elegida; tachado = menos de {min_trades} operaciones, no compite)",
+                 fontsize=12, fontweight="bold", y=1.06)
+    return save(fig, folder, "figA1_grid_robustez.png")
