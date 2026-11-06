@@ -11,25 +11,20 @@ from itertools import product
 
 import pandas as pd
 
-from backtest.engine import add_drawdown, run_backtest
-from backtest.trades import build_trade_log
+from backtest.walk_forward import run_strategy
 from performance.metrics import daily_returns, sharpe_ratio
-from strategy.signals import generate_signals, max_holding_days
+from strategy.signals import max_holding_days
 
 
 def evaluate(prices: pd.DataFrame, weights: pd.DataFrame, z: pd.Series, tradable: pd.Series,
              splits: pd.Series, params: dict, half_life: float, costs: dict) -> dict:
-    """Corre señales + backtest con un juego de parámetros y resume el resultado."""
-    max_holding = max_holding_days(half_life, params["max_holding_multiple"])
-    signals = generate_signals(z, tradable, params["z_entry"], params["z_exit"],
-                               params["z_stop"], max_holding)
-    bt = run_backtest(prices, weights, signals["direction"], **costs)
-    trades = build_trade_log(bt, signals["event"], splits)
-    returns = daily_returns(bt["equity"][tradable])
-    return {**params, "max_holding": max_holding, "trades": len(trades),
+    """Corre la estrategia con un juego de parámetros y resume el resultado."""
+    _, bt, trades = run_strategy(prices, weights, z, tradable, splits, params, half_life, costs)
+    return {**params, "max_holding": max_holding_days(half_life, params["max_holding_multiple"]),
+            "trades": len(trades),
             "net_pnl": float(bt["equity"].iloc[-1] - bt["equity"].iloc[0]),
-            "sharpe": sharpe_ratio(returns),
-            "max_drawdown": float(add_drawdown(bt["equity"]).min()),
+            "sharpe": sharpe_ratio(daily_returns(bt["equity"][tradable])),
+            "max_drawdown": float(bt["drawdown"].min()),
             "win_rate": float((trades["net_pnl"] > 0).mean()) if len(trades) else 0.0}
 
 
