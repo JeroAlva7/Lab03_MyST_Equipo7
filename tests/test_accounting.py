@@ -29,7 +29,7 @@ def backtest_run(prices, log_prices, n_train, vector):
     signals = generate_signals(f2["z"], tradable, s["z_entry"], s["z_exit"], s["z_stop"], max_holding)
     bt = run_backtest(prices[assets], kalman_weights(f1, assets), signals["direction"],
                       config.INITIAL_CAPITAL, config.CAPITAL_FRACTION, config.COMMISSION,
-                      config.BORROW_RATE_ANNUAL, config.TRADING_DAYS)
+                      config.BORROW_RATE_ANNUAL, config.TRADING_DAYS, config.REBALANCE_BAND)
     return bt, prices[assets].to_numpy(), assets
 
 
@@ -50,7 +50,9 @@ def test_costs_match_legs_and_borrow(backtest_run):
     recorded = bt["commission"].sum() + bt["borrow_cost"].sum()
 
     assert bt["legs_traded"].sum() == (traded > 0).sum()
-    assert bt["legs_traded"].sum() == len(assets) * bt["traded"].sum()   # 4 patas por movimiento
+    moves = bt["traded"] | bt["rebalanced"]
+    assert (bt.loc[bt["traded"], "legs_traded"] == len(assets)).all()   # entrada/salida: 4 patas
+    assert (bt.loc[~moves, "commission"] == 0).all()                     # sin operación no hay comisión
     assert np.isclose(recorded, expected_commission + expected_borrow, rtol=0, atol=1e-6)
 
     # El efectivo final cuadra: capital - flujos de compra/venta - costos
@@ -60,7 +62,8 @@ def test_costs_match_legs_and_borrow(backtest_run):
 
 
 def test_hand_computed_example():
-    """Dos activos, beta = (1, -0.5), comisión 1%, préstamo 0.1% diario (25.2% anual / 252).
+    """Dos activos, beta = (1, -0.5), comisión 1%, préstamo 0.1% diario (25.2% anual / 252),
+    sin rebalanceo para que las cuentas se puedan seguir a mano.
 
     Día 1: entra largo con valor 1000 -> A: +533.33 (53.33 acc a 10), B: -266.67 (-13.33 acc a 20)
            comisión 1% x 800 = 8; préstamo 0.1% x 266.67 = 0.2667
@@ -74,7 +77,7 @@ def test_hand_computed_example():
     direction = pd.Series([1, 1, 0, 0], index=dates)     # decide entrar el día 0 y salir el día 2
 
     bt = run_backtest(prices, weights, direction, capital=1000.0, fraction=0.8,
-                      commission=0.01, borrow_rate=0.252, trading_days=252)
+                      commission=0.01, borrow_rate=0.252, trading_days=252, rebalance_band=None)
 
     assert np.allclose(bt["direction"], [0, 1, 1, 0])
     assert np.isclose(bt["commission"].sum(), 8 + 28 / 3)

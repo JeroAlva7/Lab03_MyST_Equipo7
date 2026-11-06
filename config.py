@@ -92,3 +92,13 @@ BORROW_RATE_ANNUAL = 0.0025      # 0.25% anual sobre el nocional corto
 TRADING_DAYS = 252               # Devengo diario = tasa anual / 252
 INITIAL_CAPITAL = 1_000_000
 CAPITAL_FRACTION = 0.80          # 80% del capital desplegado en el spread
+
+# --- Rebalanceo (sección 3.6) ----------------------------------------------
+REBALANCE_BAND = 0.0             # Política de la estrategia: rebalanceo diario hacia beta_t y 80%
+REBALANCE_POLICIES = {           # Comparación de costos (banda = desviación tolerada por pata)
+    "diario": 0.0,
+    "banda 2%": 0.02,
+    "banda 5%": 0.05,
+    "banda 10%": 0.10,
+    "sin rebalanceo": None,
+}
