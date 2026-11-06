@@ -22,7 +22,7 @@ pasar las pruebas con `pytest` y contener el reporte en `docs/reporte.pdf`.
 | 10 | Grid search, walk-forward y rebalanceo diario contra banda | Raúl | Hecho |
 | 11 | Métricas, integración en main.py y artifacts | Raúl | Hecho |
 | 12 | Dashboard (vista ejecutiva y técnica) | Raúl | Pendiente |
-| 13 | Figuras obligatorias (1, 3-6 Jerónimo; 2, 7, 8 Raúl) | Ambos | En curso: 1, 3, 4 y 5 hechas |
+| 13 | Figuras obligatorias (1, 3-6 Jerónimo; 2, 7, 8 Raúl) | Ambos | En curso: 1, 3, 4, 5 y 6 hechas (más A1, robustez del grid); faltan 2, 7 y 8 |
 | 14 | Reporte ejecutivo, presentación y post-mortem | Ambos | Pendiente |
 
 El detalle de commits por integrante está en `plan_de_trabajo.md`.
@@ -64,3 +64,9 @@ El detalle de commits por integrante está en `plan_de_trabajo.md`.
 - **5 nov — Diferencias de versión de Python.** Correr `main.py` con Python 3.13 en lugar de 3.12 cambia los
   últimos decimales de algunos artifacts; esos cambios se descartan antes de cada commit para no generar
   conflictos.
+- **6 nov — Q del filtro 1 fuera del grid.** Se probó agregar Q del filtro 1 al grid search de umbrales. El grid
+  elige Q = 1e-9 (Sharpe de entrenamiento 0.70 contra 0.41 con 1e-8), pero con esa Q el spread de Kalman deja de
+  ser estacionario fuera de muestra y el Sharpe en prueba y validación baja (0.20 y 0.27 contra 0.32 y 0.30).
+  Se mantuvo Q = 1e-8 fija por diseño y la comparación se reporta como sensibilidad ex post
+  (`artifacts/q_sensitivity.csv`). Se agregó la figura A1 con el Sharpe de entrenamiento de todo el grid para
+  mostrar que la combinación elegida está en una zona estable.
