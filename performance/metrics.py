@@ -8,7 +8,7 @@ Convenciones:
 import numpy as np
 import pandas as pd
 
-TRADING_DAYS = 252
+from config import TRADING_DAYS
 
 
 def daily_returns(equity: pd.Series) -> pd.Series:
