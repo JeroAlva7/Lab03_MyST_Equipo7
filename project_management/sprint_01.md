@@ -23,7 +23,7 @@ pasar las pruebas con `pytest` y contener el reporte en `docs/reporte.pdf`.
 | 11 | Métricas, integración en main.py y artifacts | Raúl | Hecho |
 | 12 | Dashboard (vista ejecutiva y técnica) | Raúl | Hecho |
 | 13 | Figuras obligatorias (1, 3-6 Jerónimo; 2, 7, 8 Raúl) | Ambos | Hecho: 1 a 8, más A1 (robustez del grid) |
-| 14 | Reporte ejecutivo, presentación y post-mortem | Ambos | En curso |
+| 14 | Reporte ejecutivo, presentación y post-mortem | Ambos | Hecho: `docs/reporte.pdf` y post-mortem; presentación para la exposición del lunes 9 |
 
 El detalle de commits por integrante está en `plan_de_trabajo.md`.
 
@@ -73,3 +73,7 @@ El detalle de commits por integrante está en `plan_de_trabajo.md`.
 - **8 nov — Dashboard con pandas 3.** Al correrlo en el entorno del equipo falló porque en pandas 3 los arreglos de
   `to_numpy()` son de solo lectura; se corrigió pidiendo una copia (`to_numpy(copy=True)`). El dashboard y las
   figuras 2, 7 y 8, planeados para el sábado 7, quedaron el domingo 8.
+- **8 nov — Cierre del sprint.** El reporte ejecutivo (`docs/reporte.pdf`, 12 secciones y 9 figuras) y el
+  post-mortem de ambos integrantes quedaron el domingo 8, antes de la meta de las 20:00. Al revisar los resultados
+  para el reporte se encontró que las dos operaciones del COVID (febrero a abril de 2020) aportan 61% de la ganancia
+  de entrenamiento; se declaró como limitación de la calibración.
