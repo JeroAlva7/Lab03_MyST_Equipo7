@@ -21,9 +21,9 @@ pasar las pruebas con `pytest` y contener el reporte en `docs/reporte.pdf`.
 | 9 | Prueba de contabilidad multi-pata | Raúl | Hecho |
 | 10 | Grid search, walk-forward y rebalanceo diario contra banda | Raúl | Hecho |
 | 11 | Métricas, integración en main.py y artifacts | Raúl | Hecho |
-| 12 | Dashboard (vista ejecutiva y técnica) | Raúl | Pendiente |
-| 13 | Figuras obligatorias (1, 3-6 Jerónimo; 2, 7, 8 Raúl) | Ambos | En curso: 1, 3, 4, 5 y 6 hechas (más A1, robustez del grid); faltan 2, 7 y 8 |
-| 14 | Reporte ejecutivo, presentación y post-mortem | Ambos | Pendiente |
+| 12 | Dashboard (vista ejecutiva y técnica) | Raúl | Hecho |
+| 13 | Figuras obligatorias (1, 3-6 Jerónimo; 2, 7, 8 Raúl) | Ambos | Hecho: 1 a 8, más A1 (robustez del grid) |
+| 14 | Reporte ejecutivo, presentación y post-mortem | Ambos | En curso |
 
 El detalle de commits por integrante está en `plan_de_trabajo.md`.
 
@@ -70,3 +70,6 @@ El detalle de commits por integrante está en `plan_de_trabajo.md`.
   Se mantuvo Q = 1e-8 fija por diseño y la comparación se reporta como sensibilidad ex post
   (`artifacts/q_sensitivity.csv`). Se agregó la figura A1 con el Sharpe de entrenamiento de todo el grid para
   mostrar que la combinación elegida está en una zona estable.
+- **8 nov — Dashboard con pandas 3.** Al correrlo en el entorno del equipo falló porque en pandas 3 los arreglos de
+  `to_numpy()` son de solo lectura; se corrigió pidiendo una copia (`to_numpy(copy=True)`). El dashboard y las
+  figuras 2, 7 y 8, planeados para el sábado 7, quedaron el domingo 8.
