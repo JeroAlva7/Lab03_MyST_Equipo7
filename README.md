@@ -270,7 +270,8 @@ Se usó **Claude (Anthropic)** como asistente durante el proyecto:
   pruebas, figuras y estrategia, a partir de las ecuaciones vistas en clase.
 - **Verificación:** comprobación independiente de resultados (por ejemplo, Johansen replicado en numpy y
   reconstrucción paso a paso de las ecuaciones de Kalman) y revisión del cumplimiento de la rúbrica.
-- **Documentación:** redacción del README, del charter, del sprint y de la formulación de Powell.
+- **Documentación:** redacción del README, del charter, del sprint, de la formulación de Powell, del reporte
+  ejecutivo (`docs/reporte.pdf`) y de la parte del post-mortem de Jerónimo.
 
 Cada resultado fue ejecutado, revisado y validado por el equipo antes de subirse al repositorio. Las decisiones
 de modelado (universo, partición, criterios del embudo, calibración de Q y R) se discutieron y se tomaron como
