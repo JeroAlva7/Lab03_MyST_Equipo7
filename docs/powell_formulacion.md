@@ -183,11 +183,105 @@ calculada a mano coincide con la del filtro en todos los días (error de 10⁻¹
 
 ## 3. Sistema completo como un solo proceso de decisión secuencial
 
-*Pendiente: se completa con la lógica de trading y la contabilidad del backtest (sección 3.6), incluyendo
-su ejemplo numérico de varios días.* Estructura acordada del estado:
+El sistema completo une los dos filtros, el VECM y la lógica de trading en un solo problema: cada día, al cierre,
+decidir qué posición tener en el spread y cuántas acciones de cada activo, sabiendo que esa decisión se ejecuta al
+cierre del día siguiente y que cada movimiento paga comisiones.
+
+### Proceso de modelado de 6 pasos
+
+1. **Definir el problema.** Maximizar la ganancia neta de costos ajustada por riesgo de un portafolio de
+   $1,000,000 que opera la reversión a la media del spread de DUK, SO, AEP y XEL, desplegando 80% del capital y
+   pagando 0.125% por pata en cada operación y 0.25% anual sobre los cortos. Toda decisión usa solo información
+   disponible al cierre del día en que se toma.
+2. **Modelar el estado.** Sₜ = (Rₜ, Iₜ, Bₜ), separado en tres componentes (tabla de abajo): lo que el
+   portafolio tiene (físico), lo que se observó (información) y lo que se cree sobre variables no observables
+   (creencia).
+3. **Modelar la transición.** Tres bloques, en este orden cada día:
+   (a) *contabilidad*: se ejecuta la orden de ayer al precio de cierre de hoy, se cobran comisiones, se devenga el
+   préstamo y se valúa el portafolio; (b) *filtro 1*: actualiza los pesos β̂ₜ con ln Pₜ; (c) *filtro 2*: calcula zₜ
+   con la media y la dispersión prior y después actualiza μ̂ₜ y σ̂ₜ².
+4. **Modelar la observación.** Los precios de cierre ajustados Pₜ, de los que se derivan el spread
+   Sₜ = β̂ₜ|ₜ₋₁ᵀ ln Pₜ y el z-score zₜ = (Sₜ − μ̂ₜ|ₜ₋₁) / σ̂ₜ|ₜ₋₁.
+5. **Definir la regla de decisión.** Política de función analítica (PFA) con parámetros
+   θ = (z_entrada, z_salida, z_stop, tenencia máxima):
+   - Sin posición: entrar largo si −z_stop ≤ zₜ < −z_entrada; entrar corto si z_entrada < zₜ ≤ z_stop
+     (solo si la estrategia está "re-armada": después de un stop o de un cierre por tiempo, |z| debe regresar
+     antes a la banda de entrada).
+   - Con posición d ∈ {+1, −1}: salir si d·zₜ > −z_salida (el spread regresó a la media o la cruzó); stop si
+     d·zₜ < −z_stop; salida por tiempo si los días en posición llegan a la tenencia máxima.
+   - Tamaño: Nᵢ,ₜ = d · 0.8 · Vₜ · β̂ᵢ,ₜ / Σⱼ |β̂ⱼ,ₜ|, con rebalanceo diario hacia ese objetivo mientras la
+     posición está abierta.
+6. **Mecanismo de aprendizaje.** En línea, los dos filtros de Kalman (secciones 1 y 2). Fuera de línea, θ se
+   calibra una sola vez con grid search sobre entrenamiento (72 combinaciones, Sharpe neto, mínimo 15
+   operaciones) y queda congelado para prueba y validación. Resultado: θ = (2.0, 0.0, 4.0, 63 días).
+
+### Los 5 elementos del modelo
+
+| Elemento | Sistema completo |
+|---|---|
+| **Variable de estado** Sₜ = (Rₜ, Iₜ, Bₜ) | Ver tabla de componentes abajo |
+| **Variable de decisión** xₜ | Dirección de la posición dₜ ∈ {−1, 0, +1} y acciones objetivo de cada activo Nᵢ,ₜ / Pᵢ,ₜ₊₁ (se ejecutan en t + 1) |
+| **Información exógena** Wₜ₊₁ | Precios de cierre del día siguiente Pₜ₊₁ (y con ellos el nuevo spread y el nuevo z-score) |
+| **Función de transición** S^M | Contabilidad multi-pata (efectivo, acciones, comisiones, préstamo) + ecuaciones de Kalman de ambos filtros + contador de días en posición |
+| **Función objetivo** | max_θ Sharpe anualizado de los rendimientos diarios netos de costos en entrenamiento, sujeto a al menos 15 operaciones; equivalente a max E[Σₜ C(Sₜ, xₜ)] ajustado por riesgo, con C = cambio diario del valor neto del portafolio |
 
 | Componente | Contenido |
 |---|---|
-| **Física** Rₜ | Efectivo, acciones de cada activo, dirección de la posición y días en posición |
-| **Información** Iₜ | Precios Pₜ, spread Sₜ y z-score zₜ |
-| **Creencia** Bₜ | Filtro 1 (ẑₜ, Pₜ), filtro 2 (μ̂ₜ, Pₜ^μ, σ̂ₜ²), vector de Johansen y parámetros del VECM |
+| **Física** Rₜ | Efectivo, acciones de cada activo (positivas = largo, negativas = corto), dirección de la posición, días en posición y si la estrategia está re-armada |
+| **Información** Iₜ | Precios Pₜ, spread Sₜ, z-score zₜ y la orden decidida ayer (pendiente de ejecutar hoy) |
+| **Creencia** Bₜ | Filtro 1 (ẑₜ, Pₜ), filtro 2 (μ̂ₜ, Pₜ^μ, σ̂ₜ²), vector de Johansen y parámetros del VECM (α, vida media) |
+
+**Ganancia de Kalman en el sistema completo.** Las ganancias de los filtros determinan qué tan rápido se mueven
+el spread y el z-score con los que se decide. La ganancia del filtro 1 es pequeña (≈ 0.002): una desviación grande
+se interpreta como oportunidad de arbitraje y no como cambio de pesos; si fuera grande, los pesos absorberían la
+desviación y la señal desaparecería. La del filtro 2 converge a valores muy pequeños con Q = 10⁻¹⁰: la media de
+equilibrio se mueve muy despacio, así que una desviación del spread se traduce casi completa en z-score. Q y R se
+justifican en las secciones 1 y 2; Q del filtro 1 no entra al grid porque elegirla con la estrategia sobreajusta
+(`artifacts/q_sensitivity.csv`: con 10⁻⁹ el Sharpe de entrenamiento sube a 0.70 pero cae a 0.20 en prueba).
+
+### Ejemplo numérico: entrada larga del 26 al 29 de septiembre de 2022
+
+Mismos días que el ejemplo de los filtros (partición de prueba). Valores de `artifacts/equity.csv`,
+`artifacts/signals.csv` y `artifacts/filter1.csv`.
+
+**26 de septiembre (decisión).** El filtro 2 da μ̂ = 1.91624 y σ̂ = 0.02100 (prior). El spread es 1.87028, así que
+z = (1.87028 − 1.91624) / 0.02100 = **−2.19 < −2.0**: el portafolio está por debajo del equilibrio y la política
+decide **entrar largo en el spread**. Todavía no hay posición; el valor es V = $1,139,358.42 (todo en efectivo).
+
+**27 de septiembre (ejecución).** La orden se ejecuta al cierre de hoy con los pesos del 26,
+β̂ = (1, 0.1556, −0.6279, −0.1121), Σ|β̂| = 1.8956, y con 0.8 · V = $911,486.74:
+
+| Activo | β̂ | Nocional objetivo | Precio de cierre | Acciones |
+|---|---|---|---|---|
+| DUK | +1.0000 | +$480,830.93 | $84.22 | +5,709.33 |
+| SO | +0.1556 | +$74,825.10 | $62.10 | +1,204.88 |
+| AEP | −0.6279 | −$301,907.00 | $80.23 | −3,762.82 |
+| XEL | −0.1121 | −$53,923.71 | $59.84 | −901.08 |
+
+- Comisión: 0.125% × $911,486.74 = **$1,139.36** (las cuatro patas).
+- Préstamo de la primera noche: 0.25% / 252 × $355,830.71 de nocional corto = **$3.53**.
+- Efectivo: 1,139,358.42 − 555,656.03 (compras) + 355,830.71 (ventas en corto) − 1,139.36 − 3.53 = **$938,390.21**.
+- Valor: 938,390.21 + 555,656.03 − 355,830.71 = **$1,138,215.53**, que es el valor anterior menos los costos
+  ($1,142.89). La identidad valor = efectivo + patas es la que verifica la prueba 3.
+- z = −2.29: sigue lejos del equilibrio, se mantiene la posición.
+
+**28 de septiembre.** El spread sube 0.0102 (de 1.8638 a 1.8740) y la posición larga gana:
+
+| Pata | Acciones × cambio de precio |
+|---|---|
+| DUK | +5,709.33 × (+$1.105) = +$6,308.66 |
+| SO | +1,204.88 × (+$0.693) = +$834.64 |
+| AEP | −3,762.82 × (+$0.605) = −$2,275.83 |
+| XEL | −901.08 × (+$0.473) = −$425.90 |
+| **Total** | **+$4,441.57** |
+
+Menos el rebalanceo diario hacia los nuevos pesos (comisión $9.01) y el préstamo ($3.54), el valor sube
+**$4,429.02**, a $1,142,644.56. z = −1.82: como la salida es en z > 0, la posición sigue abierta.
+
+**29 de septiembre.** Las utilities caen otra vez y el spread baja a 1.8583 (z = −2.49): el valor baja a
+$1,134,824.12. La posición se mantiene porque z no ha llegado ni a la salida (0) ni al stop (−4).
+
+**Cierre.** El spread regresa a la media y la posición se cierra el 14 de diciembre de 2022, 55 días después:
+P&L bruto de $7,532.49, comisiones de $3,056.71 (entrada, salida y rebalanceos), préstamo de $190.95 y
+**P&L neto de $4,284.84**. El ejemplo muestra el mecanismo completo y también la principal debilidad de la
+estrategia: las comisiones se llevaron 41% de la ganancia bruta de esta operación (26% en toda la muestra).
