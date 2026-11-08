@@ -28,8 +28,9 @@ from data.validation import clean_prices, split_data, validate_prices
 from kalman.diagnostics import innovation_diagnostics
 from kalman.pipeline import order_assets, run_filters
 from performance.metrics import rolling_sharpe
-from reporting.figures import (plot_grid_robustness, plot_kalman_gain, plot_prices,
-                               plot_rolling_eigenvector, plot_weights, plot_zscore)
+from reporting.figures import (plot_equity_curves, plot_grid_robustness, plot_kalman_gain,
+                               plot_prices, plot_rolling_eigenvector, plot_spread_signals,
+                               plot_trade_returns, plot_weights, plot_zscore)
 from reporting.worked_example import worked_example_filter1, worked_example_filter2
 from strategy.signals import max_holding_days
 from strategy.sizing import kalman_weights
@@ -259,6 +260,13 @@ def run_figures_stage(prices: pd.DataFrame, splits: dict, vector: dict) -> None:
         chosen = json.load(f)["params"]
     paths += [plot_zscore(signals, chosen, starts, folder),
               plot_grid_robustness(grid, chosen, config.GRID["min_trades"], folder)]
+    equity = pd.read_csv(out / "equity.csv", index_col=0, parse_dates=True)
+    trades = pd.read_csv(out / "trades.csv", parse_dates=["entry_date", "exit_date"])
+    with open(out / "metrics.json", encoding="utf-8") as f:
+        summary = json.load(f)["by_split"]
+    paths += [plot_spread_signals(filter1["spread"], signals, starts, folder),
+              plot_equity_curves(equity, summary, starts, folder),
+              plot_trade_returns(trades, folder)]
     print(f"  {len(paths)} figuras en {folder.relative_to(config.ROOT)}")
 
     # Ejemplo numérico trabajado (sección 3.5): días alrededor de una entrada en prueba

@@ -195,3 +195,71 @@ def plot_grid_robustness(grid: pd.DataFrame, chosen: dict, min_trades: int, fold
                  f"(recuadro negro = elegida; tachado = menos de {min_trades} operaciones, no compite)",
                  fontsize=12, fontweight="bold", y=1.06)
     return save(fig, folder, "figA1_grid_robustez.png")
+
+
+SPLIT_COLORS = {"train": "#2a78d6", "test": "#eb6834", "val": "#1baf7a"}
+
+
+def plot_spread_signals(spread: pd.Series, signals: pd.DataFrame, split_starts: dict, folder: Path) -> Path:
+    """Figura 2: spread del filtro 1 con las señales de entrada y salida (fecha de decisión)."""
+    fig, ax = plt.subplots()
+    ax.plot(spread.index, spread, color=NEUTRAL, linewidth=0.7, label=r"Spread $S_t$")
+    markers = [("entrada larga", "^", "#1baf7a", "Entrada larga"), ("entrada corta", "v", "#e34948", "Entrada corta"),
+               ("salida", "o", "#2a78d6", "Salida por reversión"), ("tiempo", "s", "#eda100", "Salida por tiempo"),
+               ("stop", "X", "#e34948", "Stop")]
+    for event, marker, color, label in markers:
+        days = signals.index[signals["event"] == event]
+        if len(days):
+            ax.scatter(days, spread[days], marker=marker, s=45, color=color, edgecolor="white",
+                       linewidth=0.6, zorder=3, label=f"{label} ({len(days)})")
+    mark_splits(ax, split_starts)
+    ax.set(title="Figura 2. Spread del portafolio con las señales de entrada y salida",
+           xlabel="Fecha (día de la señal; se ejecuta al cierre del día siguiente)",
+           ylabel=r"$S_t = \hat{\beta}_t^\top \ln P_t$")
+    ax.legend(ncol=3, loc="upper left", bbox_to_anchor=(0, -0.14), fontsize=9)
+    return save(fig, folder, "fig02_spread_senales.png")
+
+
+def plot_equity_curves(equity: pd.DataFrame, summary: dict, split_starts: dict, folder: Path) -> Path:
+    """Figura 7: curva de capital neta de costos por partición, con el drawdown debajo."""
+    fig, (top, bottom) = plt.subplots(2, 1, sharex=True, figsize=(11, 7),
+                                      gridspec_kw={"height_ratios": [3, 1.2]})
+    for name, label in SPLIT_NAMES.items():
+        mask = (equity["split"] == name).to_numpy(copy=True)
+        mask[max(mask.argmax() - 1, 0)] = True          # une el tramo con el anterior
+        card = summary[name]
+        top.plot(equity.index[mask], equity["equity"][mask] / 1e6, color=SPLIT_COLORS[name],
+                 label=f"{label}: {card['return']:+.1%}, Sharpe {card['sharpe']:.2f}, "
+                       f"{card['trades']} operaciones")
+    top.axhline(1.0, color=NEUTRAL, linewidth=0.8, linestyle=":")
+    top.set(title="Figura 7. Curva de capital neta de costos por partición",
+            ylabel="Valor del portafolio (millones de USD)")
+    top.legend(loc="lower right", fontsize=9, frameon=True, facecolor="white", edgecolor="none", framealpha=0.9)
+    mark_splits(top, split_starts)
+
+    bottom.fill_between(equity.index, equity["drawdown"] * 100, 0, color="#e34948", alpha=0.35, linewidth=0)
+    bottom.plot(equity.index, equity["drawdown"] * 100, color="#e34948", linewidth=0.8)
+    bottom.set(ylabel="Drawdown (%)", xlabel="Fecha")
+    for name, start in split_starts.items():
+        if name != "train":
+            bottom.axvline(start, color=NEUTRAL, linestyle="--", linewidth=0.9)
+    return save(fig, folder, "fig07_curvas_capital.png")
+
+
+def plot_trade_returns(trades: pd.DataFrame, folder: Path) -> Path:
+    """Figura 8: distribución de retornos netos por operación con una normal superpuesta."""
+    returns = trades["return"] * 100
+    mu, sigma = returns.mean(), returns.std()
+    fig, ax = plt.subplots()
+    bins = np.linspace(returns.min(), returns.max(), 13)
+    stacked = [returns[trades["split"] == name] for name in SPLIT_NAMES]   # barras apiladas por partición
+    ax.hist(stacked, bins=bins, stacked=True, density=True, color=[SPLIT_COLORS[n] for n in SPLIT_NAMES],
+            edgecolor="white", linewidth=0.8, label=[f"{SPLIT_NAMES[n]} ({len(s)})" for n, s in zip(SPLIT_NAMES, stacked)])
+    x = np.linspace(returns.min() - sigma, returns.max() + sigma, 300)
+    ax.plot(x, np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi)), color="#2b2b2b",
+            label=f"Normal (media {mu:.2f}%, desv. {sigma:.2f}%)")
+    ax.axvline(0, color=NEUTRAL, linewidth=0.9, linestyle=":")
+    ax.set(title=f"Figura 8. Distribución de retornos netos por operación (n = {len(returns)})",
+           xlabel="Retorno neto por operación (% del valor del portafolio al entrar)", ylabel="Densidad")
+    ax.legend(loc="upper left", fontsize=9)
+    return save(fig, folder, "fig08_retornos_operacion.png")
