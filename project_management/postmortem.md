@@ -1,6 +1,6 @@
 # Post-mortem — Lab03_MyST_Equipo7
 
-Cada integrante redacta la parte de su mitad del pipeline; las secciones se completan en conjunto.
+Cada integrante redacta su mitad: Jerónimo, del dato a la señal; Raúl, de la señal al dinero.
 
 ## Hitos cumplidos a tiempo
 
@@ -8,6 +8,10 @@ Cada integrante redacta la parte de su mitad del pipeline; las secciones se comp
 viernes 6 y quedó el jueves 5, junto con el grid search, el walk-forward, el rebalanceo contra banda, las métricas
 y la integración en `main.py` (R4 a R13 en un solo día). La prueba 3 (contabilidad multi-pata) quedó el mismo
 jueves.
+
+**Del dato a la señal (Jerónimo).** H1 (martes 3) y H2 (miércoles 4) se cumplieron en la fecha planeada. H4
+(filtros 1 y 2, Johansen móvil y pruebas 1, 2 y 4) quedó el miércoles 4, un día antes de lo planeado, y la
+formulación de Powell con el ejemplo numérico y los supuestos del README quedaron el jueves 5, uno y dos días antes.
 
 ## Hitos retrasados y causas
 
@@ -19,6 +23,12 @@ jueves.
   lectura) que no apareció al probarlo con pandas 2.
 - **Secciones 7 a 10 del reporte:** dependían de los resultados finales del backtest, por lo que se redactaron al
   final, el domingo 8.
+
+**Del dato a la señal (Jerónimo).**
+- **H3 (grupo seleccionado):** medio día de retraso. Las petroleras no cointegraron (Engle-Granger p > 0.44, vidas
+  medias de 77 a 205 días) y hubo que evaluar cinco sectores más con el mismo embudo antes de elegir utilities.
+- **Figura 6:** se hizo al final porque necesitaba los umbrales del grid search; fue la única dependencia de la
+  primera mitad respecto a la segunda.
 
 ## Cuellos de botella técnicos y organizacionales
 
@@ -39,6 +49,15 @@ jueves.
   trabajar la segunda mitad sin esperar a la primera. Los archivos compartidos (`main.py`, `README.md`,
   `sprint_01.md`) obligaron a coordinar quién los editaba y a hacer `git pull` antes de cada cambio.
 
+**Del dato a la señal (Jerónimo).**
+- **Máxima verosimilitud con un modelo mal especificado.** Para Q del filtro 1, la verosimilitud siempre
+  favorecía Q grandes: los pesos absorbían las desviaciones y la vida media del spread subía a 98-293 días, porque
+  el filtro supone ruido blanco y el spread es autocorrelado. Se fijó Q por diseño. Optimizarla junto con los
+  umbrales tampoco sirvió: elegía Q = 10⁻⁹, con el doble de Sharpe en entrenamiento y spread no estacionario fuera
+  de muestra. El Sharpe por sí solo no basta para calibrar un filtro.
+- **Reproducibilidad.** Dos descargas de Yahoo Finance diferían en el sexto decimal; se resolvió guardando los
+  precios en `data/prices.csv`. El entorno de VS Code activaba el entorno virtual de otro proyecto.
+
 ## Qué haríamos distinto en producción
 
 **De la señal al dinero (Raúl).**
@@ -55,6 +74,13 @@ jueves.
 - **Acciones enteras y monitoreo.** Redondeo a acciones enteras, datos en tiempo real, alertas cuando la
   innovación normalizada del filtro se sale de su rango y conciliación diaria de efectivo y posiciones.
 
+**Del dato a la señal (Jerónimo).**
+- **Datos de un proveedor profesional** en lugar de Yahoo Finance, cuyos precios ajustados cambian entre descargas.
+- **Recalibración y monitoreo de los filtros:** reestimar el vector y R con ventana móvil y alertar cuando las
+  innovaciones normalizadas salgan de su banda o los pesos se muevan más de lo que permite Q.
+- **Un solo modelo de estado con el spread AR(1) dentro,** para estimar Q del filtro 1 por máxima verosimilitud
+  sin que los pesos absorban la señal.
+
 ## Materialización de los riesgos del registro
 
 **De la señal al dinero (Raúl).**
@@ -70,3 +96,21 @@ jueves.
   grid. El Sharpe baja de 0.41 a 0.32 y 0.30 fuera de muestra, sin colapsar.
 - **R6, plazo de una semana y dependencia entre integrantes: se materializó parcialmente.** Hubo un día de
   retraso en R4 y en el dashboard; el contrato de artifacts evitó que una mitad bloqueara a la otra.
+
+**Del dato a la señal (Jerónimo).**
+- **R1, pérdida de cointegración: se materializó con pesos fijos.** El spread de Johansen deja de ser estacionario
+  en validación (p = 0.054); el de Kalman no (p = 0.002). El filtro 1 fue la mitigación que funcionó, aunque el
+  Johansen móvil solo detecta la relación en 19% de las ventanas de tres años.
+- **R2, divergencia del filtro: solo en desarrollo.** La Q por máxima verosimilitud se detectó antes del backtest;
+  fuera de muestra las innovaciones tienen varianza 0.99 y 1.08 y pasan Ljung-Box (p = 0.975 y 0.374).
+- **R3, calidad de datos: no se materializó.** 3,771 días sin faltantes ni duplicados.
+- **R5, pruebas múltiples: declarado.** De 66 grupos (3.3 falsos positivos esperados) los 5 aprobados son de un
+  solo sector, pero con Bonferroni solo DUK-AEP pasa Engle-Granger. Además, las dos operaciones del COVID aportan
+  61% de la ganancia de entrenamiento: la calibración depende de un solo evento.
+
+## Conclusión conjunta
+
+Todos los hitos se cumplieron con a lo sumo un día de retraso, porque el contrato de `artifacts/` permitió trabajar
+las dos mitades en paralelo. Los errores importantes (Q del filtro 1, regla de salida, vida media de la tenencia
+máxima) no los encontraron las pruebas sino la revisión de cada número contra su interpretación. La relación
+resultó real pero débil e intermitente: antes de operar haría falta detectar cuándo se pierde la cointegración.
