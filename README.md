@@ -104,7 +104,45 @@ streamlit run dashboard/app.py # dashboard (lee artifacts/, no reejecuta el back
 
 ## Guía de uso del dashboard
 
-_Se completa cuando el dashboard esté terminado._
+```bash
+python main.py                  # una vez: genera artifacts/
+streamlit run dashboard/app.py  # abre http://localhost:8501
+```
+
+El dashboard (`dashboard/app.py`) **solo lee `artifacts/`**: no vuelve a correr el backtest. Si falta algún
+archivo, muestra el aviso "Corra primero: python main.py". Todas las gráficas son interactivas (Plotly):
+arrastre para hacer zoom, doble clic para regresar, pase el cursor para ver valores y haga clic en la leyenda
+para ocultar o mostrar series. En todas, las líneas punteadas verticales marcan el inicio de prueba y de
+validación.
+
+**Barra lateral.** Grupo de activos, capital y los parámetros que eligió el grid search en entrenamiento
+(z de entrada, z de salida, stop, tenencia máxima y política de rebalanceo).
+
+**Pestaña "Vista ejecutiva"** (portfolio manager o comité de inversión):
+
+1. **Periodo:** el selector de arriba cambia la tarjeta de desempeño y la atribución de costos entre la muestra
+   completa, entrenamiento, prueba y validación.
+2. **Tarjeta de desempeño:** Sharpe, Sortino, Calmar, drawdown máximo, win rate y profit factor; abajo,
+   rendimiento total y anual, volatilidad, P&L neto, número de operaciones y periodo.
+3. **Curva de capital:** valor del portafolio neto de costos, un color por partición, con el drawdown debajo.
+4. **Atribución de costos:** cascada de P&L bruto → comisiones → préstamo → P&L neto del periodo elegido.
+5. **Bitácora de operaciones:** filtros por periodo, dirección del spread (larga o corta), resultado y motivo de
+   salida (reversión, stop o tiempo). Debajo de la tabla, el P&L neto de las operaciones filtradas.
+6. **Distribución de retornos:** histograma de los retornos por operación con la normal superpuesta;
+   **responde a los filtros de la bitácora** (por ejemplo, solo prueba y validación).
+
+**Pestaña "Vista técnica"** (investigador cuantitativo o gestor de riesgos):
+
+1. **Spread con señales:** spread Sₜ del filtro 1 con entradas largas (▲), cortas (▼) y salidas por motivo
+   (✕), en la fecha en que se decide; se ejecutan al cierre del día siguiente.
+2. **z-score con umbrales:** líneas de entrada (±2), salida (0) y stop (±4).
+3. **Vector de pesos β̂ₜ:** una línea por activo (DUK fijo en +1).
+4. **Eigenvector de Johansen móvil:** componentes del primer eigenvector en ventanas de 3 años; los cuadros
+   verdes de abajo marcan las ventanas en que la traza rechaza "no cointegración".
+5. **Ganancia de Kalman:** magnitud de la ganancia de cada peso (filtro 1) y de la media μₜ (filtro 2, escala log).
+6. **Varianza posterior:** incertidumbre de cada estado en el tiempo (convergencia de los filtros).
+7. **Sharpe móvil de 252 días.**
+8. **Costo del rebalanceo** (desplegable): rebalanceo diario contra bandas de 2%, 5% y 10% y sin rebalanceo.
 
 ## Supuestos del modelo
 
