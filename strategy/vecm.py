@@ -86,4 +86,3 @@ def fit_vecm(log_train: pd.DataFrame, beta: np.ndarray, k_ar_diff: int) -> dict:
             "const": coef.loc["const"].to_dict(),
             "resid_cov": residuals.cov().to_dict(),
             "speed": speed, "half_life": half_life, "n_obs": int(len(y))}
-
