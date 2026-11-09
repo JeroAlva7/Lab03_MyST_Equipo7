@@ -14,6 +14,7 @@ from kalman.pipeline import order_assets, run_filters
 
 @pytest.mark.parametrize("split", ["test", "val"])
 def test_innovations_are_white_noise(prices, log_prices, n_train, vector, split):
+    """Innovaciones normalizadas del filtro 2 fuera de muestra: varianza cercana a 1 y sin autocorrelación."""
     _, beta0 = order_assets(vector)
     _, f2, _ = run_filters(log_prices, beta0, n_train, config.KALMAN)
     dates = split_data(prices, config.SPLIT)[split].index
