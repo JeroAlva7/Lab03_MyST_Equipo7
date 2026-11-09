@@ -277,7 +277,9 @@ módulo indicado y sus valores viven en `config.py`.
 ### Pruebas y diagnóstico (`tests/`, `cointegration/stability.py`)
 - **Prueba 4:** tolerancia declarada de varianza de las innovaciones normalizadas entre 0.8 y 1.2 y Ljung-Box
   (10 rezagos) con p > 0.05, evaluada **fuera de muestra** (prueba y validación). En entrenamiento Ljung-Box
-  rechaza por la volatilidad de marzo de 2020.
+  rechaza por la volatilidad de marzo de 2020. Se aplica al filtro 2: en el filtro 1 la innovación es la
+  desviación del spread respecto a su equilibrio, autocorrelacionada por construcción porque es la señal que se
+  opera; por eso la Q del filtro 1 no se elige por verosimilitud.
 - **Johansen móvil:** ventanas de 756 días (3 años) que avanzan 21 días; el eigenvector se escala a norma 1
   con DUK positivo para graficarlo sin que se dispare cuando el componente de DUK es pequeño.
 
