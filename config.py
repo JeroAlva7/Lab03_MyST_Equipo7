@@ -20,6 +20,8 @@ DOCS_DIR = ROOT / "docs"
 # un factor común: las tasas de interés. Se eligió tras evaluar 6 universos de un
 # solo sector con el mismo embudo (ver cointegration/universe_search.py).
 TICKERS = ["DUK", "SO", "AEP", "XEL"]
+TEAM_MEMBERS = 2
+GROUP_SIZE = 2 * TEAM_MEMBERS     # Activos del grupo final: 2 x n integrantes (sección 3.1)
 START_DATE = "2011-11-01"        # 15 años de datos diarios
 END_DATE = "2026-11-01"          # Fecha exclusiva: el último día es el 30-oct-2026
 PRICES_FILE = DATA_DIR / "prices.csv"   # Copia local versionada; evita depender de Yahoo

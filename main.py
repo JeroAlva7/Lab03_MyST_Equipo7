@@ -73,7 +73,7 @@ def run_cointegration_stage(splits: dict) -> dict:
 
     table = run_selection_funnel(log_train, config.COINTEGRATION)
     table.to_csv(out / "selection_table.csv", float_format="%.6f")
-    final, best_pair = pick_final(table)
+    final, best_pair = pick_final(table, config.GROUP_SIZE)
     chosen = table.loc[final]
 
     vector = {

@@ -101,12 +101,13 @@ def discard_stage(row: dict, settings: dict) -> str:
     return "aprobado"
 
 
-def pick_final(table: pd.DataFrame) -> tuple[str, str | None]:
+def pick_final(table: pd.DataFrame, group_size: int) -> tuple[str, str | None]:
     """Elige el grupo final y el mejor par para comparar (aclaración del profesor).
 
-    Entre los grupos aprobados de 3 o más activos se elige el más reversivo: el
-    de menor vida media (corrección de error más rápida). Si ninguno de 3 o más
-    activos aprueba, se usa el mejor par.
+    El tamaño del grupo lo fija la sección 3.1: 2 x n activos, con n integrantes. Entre
+    los grupos aprobados de ese tamaño se elige el más reversivo, el de menor vida media
+    (corrección de error más rápida). Si ninguno de ese tamaño aprueba, se toma el de
+    menor vida media entre los aprobados de 3 o más activos y, si tampoco hay, el mejor par.
 
     Returns:
         (grupo final, mejor par) o (grupo final, None) si no hay par aprobado.
@@ -114,8 +115,9 @@ def pick_final(table: pd.DataFrame) -> tuple[str, str | None]:
     approved = table[table["stage_discarded"] == "aprobado"]
     if approved.empty:
         raise RuntimeError("Ningún grupo superó el embudo de selección")
-    multi = approved[approved["size"] >= 3]
     pairs = approved[approved["size"] == 2]
     best_pair = pairs["half_life"].idxmin() if not pairs.empty else None
-    final = multi["half_life"].idxmin() if not multi.empty else best_pair
-    return final, best_pair
+    for candidates in (approved[approved["size"] == group_size], approved[approved["size"] >= 3]):
+        if not candidates.empty:
+            return candidates["half_life"].idxmin(), best_pair
+    return best_pair, best_pair
