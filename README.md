@@ -54,6 +54,26 @@ Solo las utilities aprobaron (5 de 11 grupos). El resultado completo está en `a
 | ADF del spread (p-value) | 0.0002 | 0.0005 |
 | Vida media | 24 días | 26 días |
 
+### Resultados principales
+
+Backtest continuo con costos, umbrales calibrados solo en entrenamiento (z de entrada 2.0, salida al cruzar
+0, stop en |z| = 4 y tenencia máxima de 63 días). Detalle y análisis en [`docs/reporte.pdf`](docs/reporte.pdf).
+
+| | Entrenamiento | Prueba | Validación | Muestra completa |
+|---|---|---|---|---|
+| Periodo | 30-ene-2012 a 27-oct-2020 | 28-oct-2020 a 26-oct-2023 | 27-oct-2023 a 30-oct-2026 | 2012-2026 |
+| Rendimiento anual | 1.59% | 0.90% | 0.65% | 1.26% |
+| Sharpe | 0.41 | 0.32 | 0.30 | 0.37 |
+| Drawdown máximo | −6.7% | −5.2% | −2.9% | −6.7% |
+| Operaciones (win rate) | 19 (74%) | 5 (80%) | 5 (60%) | 29 (72%) |
+| ADF p del spread de Kalman | < 0.0001 | 0.011 | 0.002 | |
+| ADF p del spread con pesos fijos | 0.0002 | 0.003 | 0.054 | |
+
+La relación es real pero débil: con pesos fijos el spread deja de ser estacionario en validación y con los
+pesos del filtro 1 no; el Johansen móvil solo detecta cointegración en 19% de las ventanas de tres años. Las
+comisiones consumen 26% de la ganancia bruta, y las dos operaciones del COVID aportan 61% de la ganancia de
+entrenamiento. Con 10 operaciones fuera de muestra el Sharpe no es estadísticamente distinto de cero.
+
 ## Estructura del repositorio
 
 ```
@@ -170,8 +190,9 @@ módulo indicado y sus valores viven en `config.py`.
 - **Normalización:** el vector se divide entre la pata de mayor valor absoluto en entrenamiento (DUK = +1),
   lo que fija la escala y el signo.
 - **Validación del spread:** ADF con p < 0.05 y vida media entre 5 y 60 días.
-- **Grupo final:** entre los aprobados de 3 o 4 activos, el de menor vida media; el mejor par se reporta
-  aparte para comparar.
+- **Grupo final:** el tamaño lo fija la sección 3.1, 2 × n = 4 activos (`config.GROUP_SIZE`); entre los
+  aprobados de ese tamaño se elige el de menor vida media (el más reversivo). El mejor par se reporta aparte
+  para comparar.
 - **Universo:** se eligió después de evaluar 6 universos de un solo sector con el mismo embudo
   (66 grupos). Todos se reportan en `artifacts/universe_search.csv`.
 - **Número de relaciones:** en el grupo final Johansen identifica **una sola relación** (r = 1 por traza y por
