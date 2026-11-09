@@ -105,8 +105,9 @@ formulación de Powell con el ejemplo numérico y los supuestos del README queda
   fuera de muestra las innovaciones tienen varianza 0.99 y 1.08 y pasan Ljung-Box (p = 0.975 y 0.374).
 - **R3, calidad de datos: no se materializó.** 3,771 días sin faltantes ni duplicados.
 - **R5, pruebas múltiples: declarado.** De 66 grupos (3.3 falsos positivos esperados) los 5 aprobados son de un
-  solo sector, pero con Bonferroni solo DUK-AEP pasa Engle-Granger. Además, las dos operaciones del COVID aportan
-  61% de la ganancia de entrenamiento: la calibración depende de un solo evento.
+  solo sector, pero con Bonferroni dentro de utilities (0.05/11) solo DUK-AEP pasa Engle-Granger, y sobre los 66
+  grupos (0.05/66) no pasaría ninguno de utilities. Además, las dos operaciones del COVID aportan 61% de la
+  ganancia de entrenamiento: la calibración depende de un solo evento.
 
 ## Conclusión conjunta
 

@@ -199,9 +199,11 @@ módulo indicado y sus valores viven en `config.py`.
   máximo eigenvalor), así que solo hay un vector candidato y no aplica la tabla comparativa entre columnas.
 - **Pruebas múltiples:** con 66 grupos al 5% se esperan ~3.3 falsos positivos por azar. Los 5 aprobados están
   todos en utilities (0 de 55 en los otros sectores), lo que apunta a una relación económica común y no a
-  falsos positivos dispersos. Con corrección de Bonferroni (0.05/66) solo DUK-AEP pasa Engle-Granger; la traza
-  de Johansen del grupo final (55.7) supera el valor crítico del 99% (54.7) por poco. Se declara como
-  limitación: la evidencia en entrenamiento es significativa pero no abrumadora.
+  falsos positivos dispersos. Con corrección de Bonferroni dentro de utilities (0.05/11 = 0.0045, columna
+  `eg_pass_bonferroni`) solo DUK-AEP pasa Engle-Granger (p = 0.003); sobre los 66 grupos (0.05/66 = 0.00076)
+  no pasaría ninguno de utilities. La traza de Johansen del grupo final (55.7) supera el valor crítico del 99%
+  (54.7) por poco. Se declara como limitación: la evidencia en entrenamiento es significativa pero no
+  abrumadora.
 
 ### Filtro de Kalman 1 (`kalman/weights_filter.py`)
 - El estado incluye un **intercepto cₜ** además de los pesos libres (SO, AEP, XEL); el peso de DUK queda fijo
